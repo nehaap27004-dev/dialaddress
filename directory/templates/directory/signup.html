@@ -1,0 +1,25 @@
+{% extends "directory/base.html" %}
+{% block title %}Sign up - DialAddress{% endblock %}
+
+{% block content %}
+<div class="container auth-wrap">
+  <div class="auth-card">
+    <h1>Create your account</h1>
+    <p class="muted">Sign up with your email. No phone number needed.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for f in form %}
+        <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+        {{ f }}
+        {% if f.help_text %}<small>{{ f.help_text|safe }}</small>{% endif %}
+        {{ f.errors }}
+      {% endfor %}
+      <button type="submit" class="btn btn-red">Sign up</button>
+    </form>
+
+    <p class="auth-alt">Already registered? <a href="{% url 'login' %}">Log in</a></p>
+  </div>
+</div>
+{% endblock %}

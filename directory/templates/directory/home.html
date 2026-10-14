@@ -1,0 +1,44 @@
+{% extends "directory/base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1>Find Trusted Businesses Near You</h1>
+    <p>Search from thousands of verified businesses across India</p>
+    {% include "directory/_search_form.html" %}
+  </div>
+</section>
+
+<div class="container">
+  <div class="cats">
+    {% for c in categories %}
+      <a class="cat t{{ forloop.counter }}" href="{% url 'search' %}?category={{ c.slug }}">
+        <i class="fa-solid {{ c.icon|default:'fa-tag' }}"></i>
+        <span>{{ c.name }}</span>
+      </a>
+    {% endfor %}
+    <a class="cat t8" href="{% url 'search' %}">
+      <i class="fa-solid fa-ellipsis"></i>
+      <span>More Categories</span>
+    </a>
+  </div>
+
+  <div class="section-head">
+    <div>
+      <h2>Featured Businesses</h2>
+      <p>Explore top-rated and verified businesses</p>
+    </div>
+    <a class="view-all" href="{% url 'search' %}">View All <i class="fa-solid fa-arrow-right"></i></a>
+  </div>
+
+  {% if featured %}
+    <div class="grid">
+      {% for b in featured %}
+        {% include "directory/_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">No featured businesses yet. Add some in the admin and tick "Is featured".</p>
+  {% endif %}
+</div>
+{% endblock %}

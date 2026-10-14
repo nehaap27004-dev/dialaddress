@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>{% block title %}DialAddress - India's Business Directory{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'directory/css/style.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <a href="{% url 'home' %}" class="logo">Dial<span>Address</span><small>India's Business Directory</small></a>
+
+      <nav class="nav">
+        <a href="{% url 'home' %}">Home</a>
+        <a href="{% url 'search' %}">Categories</a>
+        <a href="{% url 'search' %}">Cities</a>
+        <a href="#">About Us</a>
+        <a href="#">Contact</a>
+      </nav>
+
+      <div class="header-actions">
+        {% if user.is_authenticated %}
+          <a href="{% url 'my_businesses' %}" class="login"><i class="fa-regular fa-user"></i> {{ user.username }}</a>
+          <form method="post" action="{% url 'logout' %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="linklike">Logout</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="login"><i class="fa-regular fa-user"></i> Login</a>
+          <a href="{% url 'signup' %}" class="login">Sign up</a>
+        {% endif %}
+        <a href="{% url 'add_business' %}" class="btn btn-red"><i class="fa-solid fa-plus"></i> Add Business</a>
+      </div>
+
+      <a class="search-icon" href="{% url 'search' %}" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></a>
+    </div>
+  </header>
+
+  <!-- Mobile menu -->
+  <div class="drawer-backdrop" id="backdrop"></div>
+  <aside class="drawer" id="drawer" aria-label="Menu">
+    <div class="drawer-head">
+      <a href="{% url 'home' %}" class="logo">Dial<span>Address</span></a>
+      <button class="menu-close" id="menuClose" type="button" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <a href="{% url 'home' %}"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="{% url 'search' %}"><i class="fa-solid fa-list"></i> Categories</a>
+    <a href="{% url 'search' %}"><i class="fa-solid fa-city"></i> Cities</a>
+    <a href="#"><i class="fa-solid fa-circle-info"></i> About Us</a>
+    <a href="#"><i class="fa-solid fa-envelope"></i> Contact</a>
+
+    <div class="drawer-sep"></div>
+
+    {% if user.is_authenticated %}
+      <a href="{% url 'my_businesses' %}"><i class="fa-regular fa-user"></i> {{ user.username }} · My businesses</a>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="drawer-link"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}"><i class="fa-regular fa-user"></i> Login</a>
+      <a href="{% url 'signup' %}"><i class="fa-solid fa-user-plus"></i> Sign up</a>
+    {% endif %}
+
+    <a href="{% url 'add_business' %}" class="btn btn-red drawer-cta"><i class="fa-solid fa-plus"></i> Add Business</a>
+  </aside>
+  {% if request.profile and request.profile.status == "pending" %}
+    <div class="container"><div class="notice"><i class="fa-solid fa-hourglass-half"></i> Your account is waiting for approval. You can browse the site, but you can't add a business yet.</div></div>
+  {% endif %}
+  {% block messages %}
+    {% if messages %}
+      <div class="container">
+        {% for m in messages %}<div class="flash {{ m.tags }}">{{ m }}</div>{% endfor %}
+      </div>
+    {% endif %}
+  {% endblock %}
+
+  {% block content %}{% endblock %}
+
+  <footer class="site-footer">
+    <div class="container">&copy; DialAddress. All rights reserved.</div>
+  </footer>
+  <div class="mobile-cta">
+    <a class="btn btn-blue" href="tel:{{ b.phone }}"><i class="fa-solid fa-phone"></i> Call</a>
+    {% if b.whatsapp_url %}
+        <a class="btn btn-green" href="{{ b.whatsapp_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+    {% endif %}
+  </div>
+  <script>
+    (function () {
+      var body = document.body;
+      var btn = document.getElementById("menuBtn");
+      function set(open) {
+        body.classList.toggle("menu-open", open);
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      btn.addEventListener("click", function () { set(true); });
+      document.getElementById("backdrop").addEventListener("click", function () { set(false); });
+      document.getElementById("menuClose").addEventListener("click", function () { set(false); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
+      document.querySelectorAll("#drawer a").forEach(function (a) {
+        a.addEventListener("click", function () { set(false); });
+      });
+    })();
+  </script>
+</body>
+</html>

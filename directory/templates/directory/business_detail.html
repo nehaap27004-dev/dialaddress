@@ -1,0 +1,244 @@
+{% extends "directory/base.html" %}
+
+{% block title %}{{ b.name }} - {{ b.city.name }} | DialAddress{% endblock %}
+{% block messages %}{% endblock %}
+{% block content %}
+  {% if user.is_authenticated and b.owner_id == user.id %}
+    <div class="owner-bar">
+      <strong>Your listing:</strong>
+      <a href="{% url 'edit_business' b.slug %}">Edit details</a>
+      <a href="{% url 'manage_hours' b.slug %}">Opening hours</a>
+      <a href="{% url 'manage_photos' b.slug %}">Photos</a>
+    </div>
+  {% endif %}
+<div class="container detail">
+  {% if not b.is_active %}
+    <div class="notice"><i class="fa-solid fa-hourglass-half"></i> This listing is waiting for approval. Only you and site admins can see it right now.</div>
+  {% endif %}
+
+  <nav class="crumbs">
+    <a href="{% url 'home' %}">Home</a><span class="sep">›</span>
+    <a href="{% url 'search' %}?category={{ b.category.slug }}">{{ b.category.name }}</a><span class="sep">›</span>
+    {% if b.subcategory %}
+      <a href="{% url 'search' %}?category={{ b.subcategory.slug }}">{{ b.subcategory.name }}</a><span class="sep">›</span>
+    {% endif %}
+    <span>{{ b.name }}</span>
+  </nav>
+
+  <!-- Header -->
+  <section class="detail-head">
+    <div class="cover cover-lg" {% if b.cover_image %}style="background-image:url('{{ b.cover_image.url }}')"{% endif %}>
+      {% if b.is_featured %}<span class="badge-featured">Featured</span>{% endif %}
+      {% if thumbs %}
+        <div class="thumbs">
+          {% for p in thumbs %}
+            <a href="{{ p.image.url }}" target="_blank" rel="noopener"><img src="{{ p.image.url }}" alt="{{ p.caption|default:b.name }}"></a>
+          {% endfor %}
+          {% if extra_photos %}<a href="#photos">+{{ extra_photos }}<br>Photos</a>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="profile">
+      <div class="logo-box logo-lg">
+        {% if b.logo %}<img src="{{ b.logo.url }}" alt="{{ b.name }} logo">{% else %}{{ b.name|slice:":1" }}{% endif %}
+      </div>
+
+      <div class="profile-main">
+        <h1>{{ b.name }}{% if b.is_verified %}<i class="fa-solid fa-circle-check tick"></i>{% endif %}</h1>
+        <div class="meta-line">
+          <span class="tag">{{ b.category.name }}</span>
+          {% if b.subcategory %}<span class="tag">{{ b.subcategory.name }}</span>{% endif %}
+        </div>
+        <span class="rating"><i class="fa-solid fa-star"></i> <strong>{{ b.rating }}</strong> ({{ b.review_display }} reviews)</span>
+        <div class="where"><i class="fa-solid fa-location-dot"></i>{{ b.full_address }}</div>
+      </div>
+
+      <div class="profile-actions">
+        <a class="btn btn-blue" href="tel:{{ b.phone }}"><i class="fa-solid fa-phone"></i> Call</a>
+        {% if b.whatsapp_url %}
+          <a class="btn btn-green" href="{{ b.whatsapp_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+        {% endif %}
+        <a class="btn btn-red" href="{{ b.maps_url }}" target="_blank" rel="noopener"><i class="fa-solid fa-location-dot"></i> Location</a>
+        <button class="btn btn-outline" id="shareBtn" type="button"><i class="fa-solid fa-share-nodes"></i> Share</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <nav class="tabs">
+    <a href="#overview" class="active"><i class="fa-solid fa-circle-info"></i> Overview</a>
+    {% if b.service_list %}<a href="#services"><i class="fa-solid fa-layer-group"></i> Services/Offerings</a>{% endif %}
+    {% if photos %}<a href="#photos"><i class="fa-regular fa-image"></i> Photos</a>{% endif %}
+    <a href="#reviews"><i class="fa-regular fa-star"></i> Reviews</a>
+    <a href="#location"><i class="fa-solid fa-location-dot"></i> Location</a>
+    {% if related %}<a href="#similar"><i class="fa-solid fa-list-check"></i> Similar Businesses</a>{% endif %}
+  </nav>
+
+  <div class="detail-grid">
+
+    <!-- LEFT COLUMN -->
+    <div class="col">
+
+      <section class="panel" id="overview">
+        <h2><i class="fa-solid fa-store"></i> About Us</h2>
+        <p>{{ b.about|default:b.description|default:"No description added yet."|linebreaksbr }}</p>
+        {% if b.features.all %}
+          <div class="chips">
+            {% for f in b.features.all %}
+              <span class="chip"><i class="fa-solid {{ f.icon }}"></i> {{ f.name }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+      {% if b.service_list %}
+      <section class="panel" id="services">
+        <h2><i class="fa-solid fa-layer-group"></i> Services &amp; Offerings</h2>
+        <div class="chips">
+          {% for s in b.service_list %}<span class="pill">{{ s }}</span>{% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="panel">
+        <h2><i class="fa-solid fa-building"></i> Business Information</h2>
+        <dl class="info-list">
+          <div><dt>Business Name</dt><dd>{{ b.name }}</dd></div>
+          <div><dt>Category</dt><dd>{{ b.category.name }}{% if b.subcategory %} / {{ b.subcategory.name }}{% endif %}</dd></div>
+          <div><dt>Address</dt><dd>{{ b.full_address }}</dd></div>
+          <div><dt>Phone</dt><dd><a href="tel:{{ b.phone }}">{{ b.phone }}</a></dd></div>
+          {% if b.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ b.whatsapp }}</dd></div>{% endif %}
+          {% if b.email %}<div><dt>Email</dt><dd><a href="mailto:{{ b.email }}">{{ b.email }}</a></dd></div>{% endif %}
+          {% if b.website %}<div><dt>Website</dt><dd><a href="{{ b.website }}" target="_blank" rel="noopener">{{ b.website }}</a></dd></div>{% endif %}
+          {% if b.established_year %}<div><dt>Established</dt><dd>{{ b.established_year }}</dd></div>{% endif %}
+          {% if b.payment_list %}<div><dt>Payment Methods</dt><dd>{{ b.payment_list|join:", " }}</dd></div>{% endif %}
+        </dl>
+      </section>
+
+      {% if photos %}
+      <section class="panel" id="photos">
+        <h2><i class="fa-regular fa-image"></i> Photos</h2>
+        <div class="photo-grid">
+          {% for p in photos %}
+            <a href="{{ p.image.url }}" target="_blank" rel="noopener"><img src="{{ p.image.url }}" alt="{{ p.caption|default:b.name }}" loading="lazy"></a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+      <section class="panel" id="reviews">
+        <h2><i class="fa-regular fa-star"></i> Reviews</h2>
+
+        {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+
+        <p class="review-summary"><strong>{{ b.rating }}</strong> out of 5 &middot; {{ b.review_display }} reviews</p>
+
+        {% for r in reviews %}
+          <div class="review">
+            <div class="review-top">
+              <strong>{{ r.name }}</strong>
+              <span class="stars">
+                {% for i in "12345" %}<i class="{% if forloop.counter <= r.rating %}fa-solid{% else %}fa-regular{% endif %} fa-star"></i>{% endfor %}
+              </span>
+            </div>
+            {% if r.comment %}<p>{{ r.comment }}</p>{% endif %}
+            <small>{{ r.created_at|date:"d M Y" }}</small>
+          </div>
+        {% empty %}
+          <p class="muted">No reviews yet. Be the first to write one.</p>
+        {% endfor %}
+
+        <form method="post" class="review-form" action="#reviews">
+          {% csrf_token %}
+          <h3>Write a review</h3>
+
+          <div class="star-input">
+            {% for i in "54321" %}
+              <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required
+                     {% if form.rating.value == i %}checked{% endif %}>
+              <label for="star{{ i }}" title="{{ i }} star{{ i|pluralize }}"><i class="fa-solid fa-star"></i></label>
+            {% endfor %}
+          </div>
+          {{ form.rating.errors }}
+
+          {{ form.name }}
+          {{ form.name.errors }}
+
+          {{ form.comment }}
+          {{ form.comment.errors }}
+
+          <input type="text" name="company" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+          <button type="submit" class="btn btn-red">Submit Review</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col">
+
+      <section class="panel" id="location">
+        <h2><i class="fa-solid fa-location-dot"></i> Location</h2>
+        <iframe class="map" loading="lazy" src="{{ b.map_embed_url }}"></iframe>
+        <p class="addr-line"><i class="fa-solid fa-location-dot"></i> {{ b.full_address }}</p>
+        <a class="btn btn-outline" href="{{ b.maps_url }}" target="_blank" rel="noopener"><i class="fa-solid fa-location-arrow"></i> Get Directions</a>
+      </section>
+
+      {% if hours %}
+      <section class="panel">
+        <h2><i class="fa-regular fa-clock"></i> Opening Hours</h2>
+        <ul class="hours">
+          {% for h in hours %}
+            <li class="{% if h.day == today %}today{% endif %}">
+              <span>{{ h.get_day_display }}</span>
+              <span>{{ h.label }}</span>
+              {% if h.day == today %}
+                {% if open_now is True %}<em class="badge-open">Open Now</em>
+                {% elif open_now is False %}<em class="badge-closed">Closed</em>{% endif %}
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if related %}
+  <section id="similar">
+    <div class="section-head"><div><h2>Similar Businesses</h2></div></div>
+    <div class="grid">
+      {% for b in related %}
+        {% include "directory/_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+  // Share button
+  document.getElementById("shareBtn").addEventListener("click", async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url: location.href });
+      } else {
+        await navigator.clipboard.writeText(location.href);
+        alert("Link copied!");
+      }
+    } catch (e) {}
+  });
+
+  // Highlight the tab of the section currently on screen
+  const links = document.querySelectorAll(".tabs a");
+  const targets = [...links].map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle("active", l.getAttribute("href") === "#" + e.target.id));
+      }
+    });
+  }, { rootMargin: "-30% 0px -60% 0px" });
+  targets.forEach(t => spy.observe(t));
+</script>
+{% endblock %}

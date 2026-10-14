@@ -1,0 +1,25 @@
+<form class="search-box" action="{% url 'search' %}" method="get">
+  <div class="field">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Search business, service or brand...">
+  </div>
+  <div class="field city">
+    <i class="fa-solid fa-location-dot"></i>
+    <select name="city">
+      <option value="">Select City</option>
+      {% regroup cities by country as country_list %}
+      {% for group in country_list %}
+        <optgroup label="{{ group.grouper.name|default:'Other' }}">
+          {% for c in group.list %}
+            <option value="{{ c.id }}" {% if c.id|stringformat:"s" == selected_city %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </optgroup>
+      {% endfor %}
+    </select>
+  </div>
+  {% if category_slug %}<input type="hidden" name="category" value="{{ category_slug }}">{% endif %}
+  {% if min_rating %}<input type="hidden" name="rating" value="{{ min_rating }}">{% endif %}
+  {% if verified %}<input type="hidden" name="verified" value="1">{% endif %}
+  {% if sort and sort != "relevance" %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+  <button type="submit" class="btn btn-red">Search</button>
+</form>

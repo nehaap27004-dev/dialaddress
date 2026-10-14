@@ -1,0 +1,40 @@
+<article class="card">
+
+  <a href="{% url 'business_detail' b.slug %}" class="cover"
+     {% if b.cover_image %}style="background-image:url('{{ b.cover_image.url }}')"{% endif %}>
+    {% if b.is_featured %}<span class="badge-featured">Featured</span>{% endif %}
+  </a>
+
+  <div class="card-body">
+    <a href="{% url 'business_detail' b.slug %}" class="logo-box">
+      {% if b.logo %}
+        <img src="{{ b.logo.url }}" alt="{{ b.name }} logo">
+      {% else %}
+        {{ b.name|slice:":1" }}
+      {% endif %}
+    </a>
+
+    <div class="info">
+      <div class="title-row">
+        <h3>
+          <a href="{% url 'business_detail' b.slug %}">{{ b.name }}</a>
+          {% if b.is_verified %}<i class="fa-solid fa-circle-check tick"></i>{% endif %}
+        </h3>
+        <span class="rating"><i class="fa-solid fa-star"></i> {{ b.rating }} ({{ b.review_display }})</span>
+      </div>
+
+      <span class="tag">{{ b.category.name }}</span>
+      <p class="desc">{{ b.description }}</p>
+    </div>
+  </div>
+
+  <div class="addr"><i class="fa-solid fa-location-dot"></i>{{ b.address }}</div>
+
+  <div class="actions">
+    <a class="btn btn-blue" href="tel:{{ b.phone }}"><i class="fa-solid fa-phone"></i> Call</a>
+    {% if b.whatsapp_url %}
+      <a class="btn btn-green" href="{{ b.whatsapp_url }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>
+    {% endif %}
+    <a class="btn btn-soft" href="{{ b.maps_url }}" target="_blank" rel="noopener"><i class="fa-solid fa-location-dot"></i> Location</a>
+  </div>
+</article>

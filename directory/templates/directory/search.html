@@ -1,0 +1,112 @@
+{% extends "directory/base.html" %}
+
+{% block title %}Search - DialAddress{% endblock %}
+
+{% block content %}
+<section class="hero hero-small">
+  <div class="container">
+    {% include "directory/_search_form.html" %}
+  </div>
+</section>
+
+<div class="container">
+  <div class="search-layout">
+    <button type="button" class="btn btn-outline filter-toggle" id="filterToggle">
+      <i class="fa-solid fa-sliders"></i> Filters
+    </button>
+    <!-- Filters -->
+    <aside class="filters">
+      <form method="get" action="{% url 'search' %}">
+        {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+        {% if selected_city %}<input type="hidden" name="city" value="{{ selected_city }}">{% endif %}
+
+        <h3>Filters</h3>
+
+        <label class="f-label" for="f-category">Category</label>
+        <select name="category" id="f-category">
+          <option value="">All categories</option>
+          {% for c in category_tree %}
+            <option value="{{ c.slug }}" {% if c.slug == category_slug %}selected{% endif %}>{{ c.name }}</option>
+            {% for s in c.children.all %}
+              <option value="{{ s.slug }}" {% if s.slug == category_slug %}selected{% endif %}>&nbsp;&nbsp;– {{ s.name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+
+        <span class="f-label">Minimum rating</span>
+        <label class="radio"><input type="radio" name="rating" value="" {% if not min_rating %}checked{% endif %}> Any</label>
+        <label class="radio"><input type="radio" name="rating" value="3" {% if min_rating == "3" %}checked{% endif %}> 3.0 &amp; above</label>
+        <label class="radio"><input type="radio" name="rating" value="4" {% if min_rating == "4" %}checked{% endif %}> 4.0 &amp; above</label>
+        <label class="radio"><input type="radio" name="rating" value="4.5" {% if min_rating == "4.5" %}checked{% endif %}> 4.5 &amp; above</label>
+
+        <label class="radio verified-opt">
+          <input type="checkbox" name="verified" value="1" {% if verified %}checked{% endif %}>
+          <i class="fa-solid fa-circle-check tick"></i> Verified only
+        </label>
+
+        <label class="f-label" for="f-sort">Sort by</label>
+        <select name="sort" id="f-sort">
+          <option value="relevance" {% if sort == "relevance" %}selected{% endif %}>Relevance</option>
+          <option value="rating" {% if sort == "rating" %}selected{% endif %}>Highest rated</option>
+          <option value="reviews" {% if sort == "reviews" %}selected{% endif %}>Most reviewed</option>
+          <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest</option>
+          <option value="name" {% if sort == "name" %}selected{% endif %}>Name (A-Z)</option>
+        </select>
+
+        <button type="submit" class="btn btn-red">Apply filters</button>
+        <a class="clear" href="{% url 'search' %}{% if q or selected_city %}?{% if q %}q={{ q|urlencode }}{% endif %}{% if q and selected_city %}&{% endif %}{% if selected_city %}city={{ selected_city }}{% endif %}{% endif %}">Clear filters</a>
+      </form>
+    </aside>
+
+    <!-- Results -->
+    <div class="results">
+      <div class="section-head">
+        <div>
+          <h2>Search results</h2>
+          <p>{{ total }} business{{ total|pluralize:"es" }} found{% if q %} for "{{ q }}"{% endif %}</p>
+        </div>
+      </div>
+
+      {% if page_obj.object_list %}
+        <div class="grid">
+          {% for b in page_obj %}
+            {% include "directory/_card.html" %}
+          {% endfor %}
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="pagination" aria-label="Pages">
+          {% if page_obj.has_previous %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+          {% endif %}
+
+          {% for p in page_range %}
+            {% if p == ellipsis %}
+              <span class="dots">…</span>
+            {% elif p == page_obj.number %}
+              <span class="current">{{ p }}</span>
+            {% else %}
+              <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ p }}">{{ p }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next <i class="fa-solid fa-chevron-right"></i></a>
+          {% endif %}
+        </nav>
+        {% endif %}
+      {% else %}
+        <p class="empty">No businesses matched your search. Try a different keyword, or clear some filters.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<!--On a phone, the filters stay hidden until the user taps Filters. -->
+<script>
+  (function () {
+    var t = document.getElementById("filterToggle");
+    var f = document.querySelector(".filters");
+    if (t && f) t.addEventListener("click", function () { f.classList.toggle("show"); });
+  })();
+</script>
+{% endblock %}

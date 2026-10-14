@@ -1,0 +1,29 @@
+{% extends "directory/base.html" %}
+{% block title %}Login - DialAddress{% endblock %}
+
+{% block content %}
+<div class="container auth-wrap">
+  <div class="auth-card">
+    <h1>Welcome back</h1>
+    <p class="muted">Log in with your email or username.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {{ form.non_field_errors }}
+
+      <label for="{{ form.username.id_for_label }}">Email or username</label>
+      {{ form.username }}
+      {{ form.username.errors }}
+
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {{ form.password.errors }}
+
+      <button type="submit" class="btn btn-red">Log in</button>
+    </form>
+
+    <p class="auth-alt">New here? <a href="{% url 'signup' %}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

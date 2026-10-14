@@ -1,0 +1,47 @@
+{% extends "directory/base.html" %}
+{% block title %}Photos - {{ business.name }}{% endblock %}
+
+{% block content %}
+<div class="container form-page">
+  <div class="section-head">
+    <div>
+      <h2>Photos</h2>
+      <p>{{ business.name }}</p>
+    </div>
+    <a class="btn btn-outline" href="{% url 'my_businesses' %}">Back</a>
+  </div>
+
+  <section class="panel">
+    <h2><i class="fa-regular fa-image"></i> Add photos</h2>
+    <form method="post" enctype="multipart/form-data" class="upload-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="upload">
+      <input type="file" name="images" accept="image/*" multiple required>
+      <small>Select one or more images. Up to {{ max_photos }} photos in total, {{ max_mb }} MB each. You have {{ photos|length }} so far.</small>
+      <button class="btn btn-red" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Your photos ({{ photos|length }})</h2>
+    {% if photos %}
+      <div class="manage-grid">
+        {% for p in photos %}
+          <figure>
+            <img src="{{ p.image.url }}" alt="Photo {{ forloop.counter }}" loading="lazy">
+            <form method="post" onsubmit="return confirm('Delete this photo?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="photo_id" value="{{ p.id }}">
+              <button class="del" type="submit"><i class="fa-solid fa-trash"></i> Delete</button>
+            </form>
+          </figure>
+        {% endfor %}
+      </div>
+      <p class="muted">The first four photos appear on your cover. Any extra photos show as "+N Photos" and in the Photos tab.</p>
+    {% else %}
+      <p class="muted">No photos yet. Upload some above.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "directory/base.html" %}
+{% block title %}My businesses - DialAddress{% endblock %}
+
+{% block content %}
+<div class="container form-page">
+  <div class="section-head">
+    <div>
+      <h2>My businesses</h2>
+      <p>Manage the listings you have submitted.</p>
+    </div>
+    <a class="btn btn-red" href="{% url 'add_business' %}"><i class="fa-solid fa-plus"></i> Add Business</a>
+  </div>
+
+  {% if items %}
+    <div class="my-list">
+      {% for b in items %}
+        <div class="my-row">
+          <div class="my-info">
+            <h3>{{ b.name }}</h3>
+            <p>{{ b.category.name }} &middot; {{ b.city }}</p>
+          </div>
+          <div>
+            {% if b.is_active %}<em class="badge-open">Live</em>{% else %}<em class="badge-pending">Pending approval</em>{% endif %}
+          </div>
+        <div class="my-actions">
+            <a class="btn btn-outline" href="{% url 'business_detail' b.slug %}">View</a>
+            <a class="btn btn-outline" href="{% url 'manage_hours' b.slug %}"><i class="fa-regular fa-clock"></i> Hours</a>
+            <a class="btn btn-outline" href="{% url 'manage_photos' b.slug %}"><i class="fa-regular fa-image"></i> Photos</a>
+            <a class="btn btn-blue" href="{% url 'edit_business' b.slug %}">Edit</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">You haven't added a business yet. Click <strong>Add Business</strong> to get started.</p>
+  {% endif %}
+</div>
+{% endblock %}

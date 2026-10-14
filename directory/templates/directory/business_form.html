@@ -1,0 +1,39 @@
+{% extends "directory/base.html" %}
+{% block title %}{{ page_title }} - DialAddress{% endblock %}
+
+{% block content %}
+<div class="container form-page">
+  <div class="section-head">
+    <div>
+      <h2>{{ page_title }}</h2>
+      <p>Fields marked <span class="req">*</span> are required. New listings are reviewed before they go live.</p>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="biz-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    {% for title, fields in sections %}
+      <section class="panel">
+        <h2>{{ title }}</h2>
+        <div class="form-grid">
+          {% for f, wide in fields %}
+            <div class="fld {% if wide %}wide{% endif %}">
+              <label for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} <span class="req">*</span>{% endif %}</label>
+              {{ f }}
+              {% if f.help_text %}<small>{{ f.help_text }}</small>{% endif %}
+              {{ f.errors }}
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+
+    <div class="form-actions">
+      <button class="btn btn-red" type="submit">{{ submit_label }}</button>
+      <a class="btn btn-outline" href="{% url 'my_businesses' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "directory/base.html" %}
+{% block title %}Opening hours - {{ business.name }}{% endblock %}
+
+{% block content %}
+<div class="container form-page">
+  <div class="section-head">
+    <div>
+      <h2>Opening hours</h2>
+      <p>{{ business.name }}</p>
+    </div>
+    <a class="btn btn-outline" href="{% url 'my_businesses' %}">Back</a>
+  </div>
+
+  <form method="post" class="panel hours-form">
+    {% csrf_token %}
+
+    {% if errors %}
+      <ul class="errorlist">
+        {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <div class="hours-tools">
+      <button type="button" class="btn btn-outline" id="copyMon">Copy Monday to all days</button>
+      <button type="button" class="btn btn-outline" id="all24">Open 24 hours</button>
+    </div>
+
+    <div>
+      {% for r in rows %}
+        <div class="hrow" data-day="{{ r.day }}">
+          <strong>{{ r.label }}</strong>
+          <input type="time" name="opens_{{ r.day }}" value="{{ r.opens }}">
+          <span>to</span>
+          <input type="time" name="closes_{{ r.day }}" value="{{ r.closes }}">
+          <label class="radio"><input type="checkbox" name="closed_{{ r.day }}" {% if r.closed %}checked{% endif %}> Closed</label>
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="muted">Tick <strong>Closed</strong> for a day off. Leave both times empty to hide that day. A closing time earlier than the opening time means the business closes after midnight.</p>
+
+    <button class="btn btn-red" type="submit">Save hours</button>
+  </form>
+</div>
+
+<script>
+  (function () {
+    var rows = document.querySelectorAll(".hrow");
+    function field(r, prefix) { return r.querySelector('[name^="' + prefix + '"]'); }
+
+    document.getElementById("copyMon").addEventListener("click", function () {
+      var mon = document.querySelector('.hrow[data-day="0"]');
+      var o = field(mon, "opens_").value;
+      var c = field(mon, "closes_").value;
+      var x = field(mon, "closed_").checked;
+      rows.forEach(function (r) {
+        field(r, "opens_").value = o;
+        field(r, "closes_").value = c;
+        field(r, "closed_").checked = x;
+      });
+    });
+
+    document.getElementById("all24").addEventListener("click", function () {
+      rows.forEach(function (r) {
+        field(r, "opens_").value = "00:00";
+        field(r, "closes_").value = "23:59";
+        field(r, "closed_").checked = false;
+      });
+    });
+  })();
+</script>
+{% endblock %}
