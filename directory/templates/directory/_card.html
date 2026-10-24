@@ -6,11 +6,11 @@
   </a>
 
   <div class="card-body">
-    <a href="{% url 'business_detail' b.slug %}" class="logo-box">
+    <a href="{% url 'business_detail' b.slug %}" class="logo-box" aria-label="{{ b.name }}" style="background:{{ b.logo_background }}{% if not b.logo %};color:{{ b.logo_text_color }}{% endif %}">
       {% if b.logo %}
         <img src="{{ b.logo.url }}" alt="{{ b.name }} logo">
       {% else %}
-        {{ b.name|slice:":1" }}
+        {{ b.initials }}
       {% endif %}
     </a>
 

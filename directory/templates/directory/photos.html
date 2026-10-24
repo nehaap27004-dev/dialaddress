@@ -1,0 +1,43 @@
+{% extends "directory/base.html" %}
+{% block title %}Business photos - DialAddress{% endblock %}
+
+{% block content %}
+<div class="container photos-page">
+  <div class="section-head">
+    <div>
+      <h2>Business photos</h2>
+      <p>{{ total }} photo{{ total|pluralize }}{% if q %} matching "{{ q }}"{% endif %}</p>
+    </div>
+    <form method="get" class="mini-search">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by business, category or city">
+      <button type="submit" class="btn btn-red">Search</button>
+    </form>
+  </div>
+
+  {% if page_obj.object_list %}
+    <div class="photo-grid-page">
+      {% for photo in page_obj %}
+        {% include "directory/_photo_card.html" with p=photo %}
+      {% endfor %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pagination" aria-label="Pages">
+      {% if page_obj.has_previous %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+      {% endif %}
+      {% for n in page_range %}
+        {% if n == ellipsis %}<span class="dots">…</span>
+        {% elif n == page_obj.number %}<span class="current">{{ n }}</span>
+        {% else %}<a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next <i class="fa-solid fa-chevron-right"></i></a>
+      {% endif %}
+    </nav>
+    {% endif %}
+  {% else %}
+    <p class="empty">No photos found.</p>
+  {% endif %}
+</div>
+{% endblock %}

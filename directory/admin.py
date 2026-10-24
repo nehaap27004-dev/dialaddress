@@ -1,23 +1,34 @@
 from datetime import time
 
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.sessions.models import Session
 from django.db.models import Count
 from django.utils import timezone
+from django.utils.html import format_html
 
 from .models import (
     Business, BusinessPhoto, Category, City, Country,
     Feature, OpeningHour, Profile, Review,
 )
-
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "parent", "slug", "icon")
+    list_display = ("name", "parent", "slug", "icon", "has_content")
     list_filter = ("parent",)
     search_fields = ("name",)
+    fieldsets = (
+        (None, {"fields": ("name", "slug", "icon", "parent")}),
+        ("'More' panel on the search page", {
+            "description": "Shown when visitors click More at the end of a category's results. The button appears only if the description is filled in.",
+            "fields": ("info_heading", "info_subheading", "info_content"),
+        }),
+    )
 
+    @admin.display(description="Panel text", boolean=True)
+    def has_content(self, obj):
+        return obj.has_info
 
 @admin.register(Country)
 class CountryAdmin(admin.ModelAdmin):
@@ -48,10 +59,22 @@ class HourInline(admin.TabularInline):
     max_num = 7
 
 
+class BusinessAdminForm(forms.ModelForm):
+    class Meta:
+        model = Business
+        fields = "__all__"
+        widgets = {
+            "logo_bg_color": forms.TextInput(attrs={
+                "type": "color",
+                "style": "width:70px;height:38px;padding:2px;cursor:pointer;",
+            }),
+        }
+
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
+    form = BusinessAdminForm
     list_display = (
-        "name", "category","owner", "city", "rating",
+        "name", "category", "city", "owner", "rating",
         "is_verified", "is_featured", "is_active",
     )
     list_filter = ("category", "city", "is_verified", "is_featured", "is_active")
@@ -59,17 +82,42 @@ class BusinessAdmin(admin.ModelAdmin):
     list_editable = ("is_verified", "is_featured", "is_active")
     filter_horizontal = ("features",)
     raw_id_fields = ("owner",)
+    readonly_fields = ("logo_preview",)
     inlines = [HourInline, PhotoInline]
+    form = BusinessAdminForm
+    readonly_fields = ("logo_preview",)   # add "cover_preview" here too if you use it
+
+    class Media:
+        js = ("directory/js/logo_color.js",)
     actions = ["set_default_hours", "approve_selected"]
+
     fieldsets = (
         ("Basic", {"fields": ("name", "slug", "category", "subcategory", "city")}),
-        ("About", {"fields": ("description", "about", "services", "features",
+        ("About", {"fields": ("description", "about_heading","about", "services", "features",
                               "established_year", "payment_methods")}),
         ("Contact", {"fields": ("address", "phone", "whatsapp", "email", "website")}),
-        ("Media & map", {"fields": ("logo", "cover_image", "latitude", "longitude")}),
+        ("Media & map", {"fields": ("logo", "logo_bg_color", "logo_preview",
+                                    "cover_image", "latitude", "longitude")}),
         ("Status", {"fields": ("owner", "rating", "review_count",
                                "is_verified", "is_featured", "is_active")}),
     )
+
+    @admin.display(description="Logo preview (updates after saving)")
+    def logo_preview(self, obj):
+        if not obj or not obj.pk:
+            return "Save the business first to see the preview."
+        box = ("display:inline-grid;place-items:center;height:80px;width:80px;box-sizing:border-box;"
+               "padding:4px;border:1px solid #ccc;border-radius:10px;overflow:hidden;")
+        if obj.logo:
+            return format_html(
+                '<span style="{}background:{}"><img src="{}" '
+                'style="display:block;width:100%;height:100%;object-fit:contain"></span>',
+                box, obj.logo_background, obj.logo.url,
+            )
+        return format_html(
+            '<span style="{}background:{};color:{};font-size:28px;font-weight:700">{}</span>',
+            box, obj.logo_background, obj.logo_text_color, obj.initials,
+        )
 
     @admin.action(description="Set default hours (9 AM - 9 PM, all 7 days)")
     def set_default_hours(self, request, queryset):
@@ -79,6 +127,7 @@ class BusinessAdmin(admin.ModelAdmin):
                     business=business, day=day,
                     defaults={"opens": time(9, 0), "closes": time(21, 0)},
                 )
+
     @admin.action(description="Approve selected businesses (make them live)")
     def approve_selected(self, request, queryset):
         n = queryset.update(is_active=True)
@@ -200,3 +249,25 @@ class UserAdmin(BaseUserAdmin):
                 session.delete()
                 n += 1
         self.message_user(request, f"{n} session(s) ended.")
+        
+@admin.register(BusinessPhoto)
+class BusinessPhotoAdmin(admin.ModelAdmin):
+    list_display = ("preview", "heading", "business", "category", "city")
+    list_filter = ("business__category", "business__city")
+    search_fields = ("business__name", "caption")
+    raw_id_fields = ("business",)
+    list_select_related = ("business__category", "business__city")
+
+    @admin.display(description="Photo")
+    def preview(self, obj):
+        if not obj.image:
+            return "-"
+        return format_html('<img src="{}" style="height:50px;border-radius:4px">', obj.image.url)
+
+    @admin.display(description="Category")
+    def category(self, obj):
+        return obj.business.category.name
+
+    @admin.display(description="City")
+    def city(self, obj):
+        return obj.business.city.name

@@ -1,0 +1,66 @@
+{% extends "directory/base.html" %}
+
+{% block title %}{{ heading }}{% if page_obj.number > 1 %} - Page {{ page_obj.number }}{% endif %} | DialAddress{% endblock %}
+{% block meta_description %}{{ intro }}{% endblock %}
+{% block canonical %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% if page_obj.number > 1 %}?page={{ page_obj.number }}{% endif %}{% endblock %}
+{% block robots %}{% if noindex %}noindex, follow{% else %}index, follow, max-image-preview:large{% endif %}{% endblock %}
+{% block og_title %}{{ heading }}{% endblock %}
+{% block og_description %}{{ intro }}{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ breadcrumb_jsonld|safe }}</script>{% endblock %}
+
+{% block content %}
+<div class="container photos-page">
+
+  <nav class="crumbs">
+    {% for name, path in crumbs %}
+      {% if forloop.last %}
+        <span>{{ name }}</span>
+      {% else %}
+        <a href="{{ path }}">{{ name }}</a><span class="sep">›</span>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <div class="section-head">
+    <div>
+      <h1 class="page-title">{{ heading }}</h1>
+      <p>{{ intro }}</p>
+    </div>
+  </div>
+
+  
+
+  {% if page_obj.object_list %}
+    <div class="grid">
+      {% for b in page_obj %}
+        {% include "directory/_card.html" %}
+      {% endfor %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pagination" aria-label="Pages">
+      {% if page_obj.has_previous %}
+        <a rel="prev" href="{% if page_obj.previous_page_number == 1 %}{{ request.path }}{% else %}?page={{ page_obj.previous_page_number }}{% endif %}"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+      {% endif %}
+
+      {% for n in page_range %}
+        {% if n == ellipsis %}
+          <span class="dots">…</span>
+        {% elif n == page_obj.number %}
+          <span class="current">{{ n }}</span>
+        {% else %}
+          <a href="{% if n == 1 %}{{ request.path }}{% else %}?page={{ n }}{% endif %}">{{ n }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a rel="next" href="?page={{ page_obj.next_page_number }}">Next <i class="fa-solid fa-chevron-right"></i></a>
+      {% endif %}
+    </nav>
+    {% endif %}
+  {% else %}
+    <p class="empty">No businesses are listed here yet.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from urllib.parse import quote
+from django.core.exceptions import ValidationError
 
 from django.db import models
 from django.db.models import Avg, Count
@@ -8,6 +9,19 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.text import slugify
 from django.conf import settings
+import os
+import uuid
+import re
+from django.core.validators import RegexValidator
+
+DEFAULT_LOGO_BG = "#FFFFFF"
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def normalize_color(value):
+    """A valid #RRGGBB in upper case, or pure white for anything else."""
+    value = (value or "").strip()
+    return value.upper() if _HEX.match(value) else DEFAULT_LOGO_BG
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -21,7 +35,18 @@ class Category(models.Model):
         related_name="children",
         help_text="Leave empty for a main category. Set it to make a subcategory (e.g. Fast Food under Restaurants).",
     )
-
+    info_heading = models.CharField(
+        "Panel heading", max_length=150, blank=True, default="",
+        help_text="Heading shown in the More panel. Leave empty to use About plus the category name.",
+    )
+    info_subheading = models.CharField(
+        "Panel subheading", max_length=250, blank=True, default="",
+        help_text="One line shown under the heading.",
+    )
+    info_content = models.TextField(
+        "Panel description", blank=True, default="",
+        help_text="Separate paragraphs with a blank line. The More button only appears when this is filled in.",
+    )
     class Meta:
         verbose_name_plural = "categories"
         ordering = ["name"]
@@ -31,6 +56,21 @@ class Category(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+   
+    @property
+    def has_info(self):
+        return bool(self.info_content.strip())
+
+    @property
+    def info_title(self):
+        return self.info_heading or f"About {self.name}"
+
+    def clean(self):
+        p = self.parent
+        while p is not None:
+            if p.pk == self.pk:
+                raise ValidationError({"parent": "A category can't be placed under itself or one of its own subcategories."})
+            p = p.parent
     def __str__(self):
         return f"{self.parent.name} › {self.name}" if self.parent else self.name
 
@@ -112,6 +152,10 @@ class Business(models.Model):
         City, on_delete=models.CASCADE, related_name="businesses"
     )
     description = models.TextField(blank=True)
+    about_heading = models.CharField(
+        "About heading", max_length=150, blank=True, default="",
+        help_text="Optional heading shown under 'About Us', e.g. 'Serving Delhi since 1990'.",
+    )
     about = models.TextField(
         blank=True, help_text="Long 'About Us' text. If empty, the short description is used."
     )
@@ -133,6 +177,11 @@ class Business(models.Model):
     email = models.EmailField(blank=True)
     website = models.URLField(blank=True)
     logo = models.ImageField(upload_to="logos/", blank=True, null=True)
+    logo_bg_color = models.CharField(
+        "Logo background color", max_length=7, default="#FFFFFF", blank=True,
+        validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "Enter a color like #FFFFFF.")],
+        help_text="Background shown behind the logo (or the initials when there is no logo). Default is pure white.",
+    )
     cover_image = models.ImageField(upload_to="covers/", blank=True, null=True)
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, blank=True, null=True
@@ -146,7 +195,7 @@ class Business(models.Model):
     is_featured = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    updated_at = models.DateTimeField(null=True, blank=True, editable=False)
     class Meta:
         verbose_name_plural = "businesses"
         ordering = ["-is_featured", "-rating", "name"]
@@ -160,6 +209,8 @@ class Business(models.Model):
                 n += 1
                 slug = f"{base}-{n}"
             self.slug = slug
+        self.updated_at = timezone.now()
+        self.logo_bg_color = normalize_color(self.logo_bg_color)
         super().save(*args, **kwargs)
     @property
     def service_list(self):
@@ -223,24 +274,61 @@ class Business(models.Model):
         Business.objects.filter(pk=self.pk).update(
             rating=avg, review_count=stats["n"]
         )
+    @property
+    def initials(self):
+        words = [w for w in self.name.split() if w[0].isalnum()]
+        if not words:
+            return "?"
+        if len(words) == 1:
+            return words[0][:2].upper()
+        return (words[0][0] + words[1][0]).upper()
+
+    @property
+    def logo_background(self):
+        return normalize_color(self.logo_bg_color)
+
+    @property
+    def logo_text_color(self):
+        h = self.logo_background.lstrip("#")
+        r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+        return "#1b2430" if (r * 299 + g * 587 + b * 114) / 1000 > 150 else "#FFFFFF"
+    
     def __str__(self):
         return self.name
 
+
+    
+    
+def photo_path(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f"photos/{instance.business.slug}-{uuid.uuid4().hex[:8]}{ext}"
+
+
 class BusinessPhoto(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="photos")
-    image = models.ImageField(upload_to="photos/")
-    caption = models.CharField(max_length=150, blank=True)
+    image = models.ImageField(upload_to=photo_path)
+    heading = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="Bold title shown under the photo, e.g. 'Family dining area'",
+    )
+    caption = models.CharField(
+        "Short details", max_length=300, blank=True, default="",
+        help_text="One or two sentences shown under the heading",
+    )
 
     class Meta:
         ordering = ["id"]
 
+    @property
+    def display_caption(self):
+        """Used as the image alt text."""
+        b = self.business
+        return self.heading or self.caption or f"{b.name} – {b.category.name} in {b.city.name}"
+
     def __str__(self):
         return f"{self.business.name} photo"
-
-
-def _fmt(t):
-    return t.strftime("%I:%M %p").lstrip("0")
-
+    def _fmt(t):
+       return t.strftime("%I:%M %p").lstrip("0")
 
 class OpeningHour(models.Model):
     DAYS = [
@@ -261,11 +349,11 @@ class OpeningHour(models.Model):
     def label(self):
         if self.is_closed or not (self.opens and self.closes):
             return "Closed"
-        return f"{_fmt(self.opens)} – {_fmt(self.closes)}"
 
-    def __str__(self):
-        return f"{self.business.name} - {self.get_day_display()}"
+        def fmt(t):
+            return t.strftime("%I:%M %p").lstrip("0")
 
+        return f"{fmt(self.opens)} – {fmt(self.closes)}"
 
 class Review(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="reviews")

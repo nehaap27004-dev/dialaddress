@@ -1,0 +1,22 @@
+<article class="photo-card">
+    <a class="photo-img" href="{% url 'business_detail' p.business.slug %}#photos"></a>
+    <img src="{{ p.image.url }}" alt="{{ p.display_caption }}" loading="lazy">
+  </a>
+
+  <div class="photo-info">
+    <h3 class="photo-heading">{{ p.heading|default:p.business.name }}</h3>
+    {% if p.caption %}<p class="photo-caption">{{ p.caption }}</p>{% endif %}
+
+    <p class="photo-biz">
+      <a href="{% url 'business_detail' p.business.slug %}">{{ p.business.name }}</a>
+      {% if p.business.is_verified %}<i class="fa-solid fa-circle-check tick"></i>{% endif %}
+      · {{ p.business.category.name }}
+    </p>
+    <p class="photo-meta"><i class="fa-solid fa-location-dot"></i> {{ p.business.address }}, {{ p.business.city.name }}</p>
+    <p class="photo-meta">
+      <i class="fa-solid fa-star"></i> {{ p.business.rating }} ({{ p.business.review_display }})
+      &nbsp;·&nbsp; <i class="fa-solid fa-phone"></i> {{ p.business.phone }}
+    </p>
+    <a class="photo-link" href="{% url 'business_detail' p.business.slug %}">View listing <i class="fa-solid fa-arrow-right"></i></a>
+  </div>
+</article>

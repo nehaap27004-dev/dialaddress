@@ -79,15 +79,20 @@ class BusinessForm(forms.ModelForm):
         model = Business
         fields = [
             "name", "category", "subcategory", "city",
-            "description", "about", "services", "features",
+            "description","about_heading", "about", "services", "features",
             "established_year", "payment_methods",
             "address", "phone", "whatsapp", "email", "website",
-            "logo", "cover_image", "latitude", "longitude",
+            "logo", "logo_bg_color", "cover_image", "latitude", "longitude",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
+            "about_heading": forms.TextInput(attrs={"placeholder": "About heading"}),
             "about": forms.Textarea(attrs={"rows": 4}),
             "services": forms.Textarea(attrs={"rows": 2}),
+            "logo_bg_color": forms.TextInput(attrs={
+                "type": "color",
+                "style": "width:70px;height:40px;padding:2px;cursor:pointer;",
+            }),
         }
 
     def clean_phone(self):

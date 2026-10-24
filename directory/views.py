@@ -6,15 +6,18 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.http import Http404
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.db.models import Count, Q
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_GET
+
 from .decorators import approved_required
 from .forms import BusinessForm, ReviewForm, SignUpForm
 from .models import Business, BusinessPhoto, Category, City, OpeningHour
+from .seo import breadcrumb_jsonld, business_jsonld, clean_text, to_json
 PER_PAGE = 9
 
 SORTS = {
@@ -36,10 +39,11 @@ def home(request):
         "cities": _cities(),
         "featured": Business.objects.filter(is_active=True, is_featured=True)
         .select_related("category", "city")[:6],
+        "recent_photos": BusinessPhoto.objects.filter(business__is_active=True)
+        .select_related("business__category", "business__subcategory", "business__city")
+        .order_by("-id")[:6],
     }
     return render(request, "directory/home.html", context)
-#Search filters, sorting, and pagination
-#This step adds a filter sidebar (category, minimum rating, verified only), sorting, and page numbers to the search page. The search box also matches more fields. No migrations are needed.
 def search(request):
     q = request.GET.get("q", "").strip()
     city_id = request.GET.get("city", "")
@@ -64,10 +68,15 @@ def search(request):
         )
     if city_id.isdigit():
         results = results.filter(city_id=city_id)
+
+    # Same category filter as before, plus the category itself for the More panel
+    category = None
     if category_slug:
+        category = Category.objects.filter(slug=category_slug).first()
         results = results.filter(
             Q(category__slug=category_slug) | Q(subcategory__slug=category_slug)
         )
+
     if min_rating in ("3", "4", "4.5"):
         results = results.filter(rating__gte=Decimal(min_rating))
     if verified:
@@ -92,6 +101,7 @@ def search(request):
         "q": q,
         "selected_city": city_id,
         "category_slug": category_slug,
+        "category": category,
         "min_rating": min_rating,
         "verified": verified,
         "sort": sort,
@@ -99,7 +109,6 @@ def search(request):
         "category_tree": Category.objects.filter(parent__isnull=True).prefetch_related("children"),
     }
     return render(request, "directory/search.html", context)
-
 def business_detail(request, slug):
     business = get_object_or_404(
         Business.objects.select_related("category", "subcategory", "city__country")
@@ -145,12 +154,12 @@ def business_detail(request, slug):
     })
 FORM_SECTIONS = [
     ("Basic details", ["name", "category", "subcategory", "city"]),
-    ("About your business", ["description", "about", "services", "features",
+    ("About your business", ["description", "about_heading","about", "services", "features",
                              "established_year", "payment_methods"]),
     ("Contact", ["address", "phone", "whatsapp", "email", "website"]),
-    ("Images & map (optional)", ["logo", "cover_image", "latitude", "longitude"]),
+    ("Images & map (optional)", ["logo", "logo_bg_color", "cover_image", "latitude", "longitude"]),
 ]
-WIDE_FIELDS = {"description", "about", "services", "features", "address", "payment_methods"}
+WIDE_FIELDS = {"description", "about_heading", "about", "services", "features", "address", "payment_methods", "logo_bg_color"}
 
 
 def _form_context(form, title, submit_label):
@@ -178,6 +187,8 @@ def signup(request):
         messages.success(request, "Welcome! Your account has been created.")
         return redirect("add_business")
     return render(request, "directory/signup.html", {"form": form})
+
+
 @login_required
 @approved_required
 def add_business(request):
@@ -291,51 +302,52 @@ def manage_hours(request, slug):
     return render(request, "directory/manage_hours.html",
                   {"business": business, "rows": rows, "errors": errors})
 
-
 @login_required
 @approved_required
 def manage_photos(request, slug):
-    business = _managed_business(request, slug)
+    business = _managed_business(request, slug)  # owner or admin only
 
     if request.method == "POST":
         action = request.POST.get("action")
+        photo_id = request.POST.get("photo_id", "")
+        heading = request.POST.get("heading", "").strip()[:100]
+        details = request.POST.get("details", "").strip()[:300]
 
-        if action == "delete" and request.POST.get("photo_id", "").isdigit():
-            photo = get_object_or_404(
-                BusinessPhoto, pk=int(request.POST["photo_id"]), business=business
-            )
+        if action == "delete" and photo_id.isdigit():
+            photo = get_object_or_404(BusinessPhoto, pk=int(photo_id), business=business)
             photo.image.delete(save=False)  # remove the file from disk too
             photo.delete()
             messages.success(request, "Photo removed.")
 
-        elif action == "upload":
-            files = request.FILES.getlist("images")
-            room = MAX_PHOTOS - business.photos.count()
-            if not files:
-                messages.error(request, "Choose at least one image.")
-            elif len(files) > room:
-                messages.error(
-                    request,
-                    f"You can add {max(room, 0)} more photo(s). The limit is {MAX_PHOTOS}.",
-                )
+        elif action == "update" and photo_id.isdigit():
+            photo = get_object_or_404(BusinessPhoto, pk=int(photo_id), business=business)
+            if not heading:
+                messages.error(request, "Please enter a heading for the photo.")
             else:
-                checker = forms.ImageField()
-                added, problems = 0, []
-                for f in files:
-                    if f.size > MAX_IMAGE_MB * 1024 * 1024:
-                        problems.append(f"{f.name} is larger than {MAX_IMAGE_MB} MB")
-                        continue
-                    try:
-                        checker.clean(f)  # confirms it is a real image
-                    except ValidationError:
-                        problems.append(f"{f.name} is not a valid image")
-                        continue
-                    BusinessPhoto.objects.create(business=business, image=f)
-                    added += 1
-                if added:
-                    messages.success(request, f"{added} photo(s) uploaded.")
-                if problems:
-                    messages.error(request, "Skipped: " + "; ".join(problems) + ".")
+                photo.heading, photo.caption = heading, details
+                photo.save(update_fields=["heading", "caption"])
+                messages.success(request, "Photo details saved.")
+
+        elif action == "upload":
+            image = request.FILES.get("image")
+            if not image:
+                messages.error(request, "Please choose a photo.")
+            elif not heading:
+                messages.error(request, "Please enter a heading for the photo.")
+            elif business.photos.count() >= MAX_PHOTOS:
+                messages.error(request, f"The limit is {MAX_PHOTOS} photos per business.")
+            elif image.size > MAX_IMAGE_MB * 1024 * 1024:
+                messages.error(request, f"The image is larger than {MAX_IMAGE_MB} MB.")
+            else:
+                try:
+                    forms.ImageField().clean(image)  # confirms it is a real image
+                except ValidationError:
+                    messages.error(request, "That file is not a valid image.")
+                else:
+                    BusinessPhoto.objects.create(
+                        business=business, image=image, heading=heading, caption=details
+                    )
+                    messages.success(request, "Photo uploaded.")
 
         return redirect("manage_photos", slug=business.slug)
 
@@ -345,3 +357,112 @@ def manage_photos(request, slug):
         "max_photos": MAX_PHOTOS,
         "max_mb": MAX_IMAGE_MB,
     })
+def photo_gallery(request):
+    q = request.GET.get("q", "").strip()
+    photos = (
+        BusinessPhoto.objects.filter(business__is_active=True)
+        .select_related("business__category", "business__subcategory", "business__city")
+        .order_by("-id")
+    )
+    if q:
+        photos = photos.filter(
+            Q(business__name__icontains=q)
+            | Q(caption__icontains=q)
+            | Q(business__category__name__icontains=q)
+            | Q(business__city__name__icontains=q)
+        )
+
+    paginator = Paginator(photos, 12)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
+
+    return render(request, "directory/photos.html", {
+        "page_obj": page_obj,
+        "total": paginator.count,
+        "q": q,
+        "page_range": list(
+            paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1)
+        ),
+        "ellipsis": Paginator.ELLIPSIS,
+        "querystring": params.urlencode(),
+    })
+
+
+def _page_context(request, qs, per_page=12):
+    paginator = Paginator(qs, per_page)
+    try:
+        page_obj = paginator.page(request.GET.get("page", 1))
+    except (PageNotAnInteger, EmptyPage):
+        raise Http404  # no duplicate "page 999" pages
+    return {
+        "page_obj": page_obj,
+        "total": paginator.count,
+        "page_range": list(
+            paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1)
+        ),
+        "ellipsis": Paginator.ELLIPSIS,
+        "noindex": paginator.count == 0,  # empty pages stay out of Google
+    }
+
+
+def category_page(request, slug):
+    category = get_object_or_404(Category.objects.select_related("parent"), slug=slug)
+    qs = (
+        Business.objects.filter(is_active=True)
+        .filter(Q(category=category) | Q(subcategory=category))
+        .select_related("category", "city")
+        .order_by(*SORTS["relevance"])
+    )
+    ctx = _page_context(request, qs)
+    crumbs = [("Home", reverse("home"))]
+    if category.parent:
+        crumbs.append((category.parent.name, reverse("category_page", args=[category.parent.slug])))
+    crumbs.append((category.name, reverse("category_page", args=[category.slug])))
+    ctx.update({
+        "category": category,
+        "heading": f"{category.name} in India",
+        "intro": f"Find {category.name} businesses near you. Compare ratings, see photos and opening hours, then call or message them directly.",
+        "crumbs": crumbs,
+        "breadcrumb_jsonld": to_json(breadcrumb_jsonld(request, crumbs)),
+    })
+    return render(request, "directory/listing.html", ctx)
+
+
+def city_page(request, slug):
+    city = get_object_or_404(City.objects.select_related("country"), slug=slug)
+    qs = (
+        Business.objects.filter(is_active=True, city=city)
+        .select_related("category", "city")
+        .order_by(*SORTS["relevance"])
+    )
+    ctx = _page_context(request, qs)
+    place = f"{city.name}, {city.state}" if city.state else city.name
+    crumbs = [("Home", reverse("home")), (city.name, reverse("city_page", args=[city.slug]))]
+    ctx.update({
+        "heading": f"Businesses in {city.name}",
+        "intro": f"Browse local businesses in {place}. Compare ratings, see photos and opening hours, then call or message them directly.",
+        "crumbs": crumbs,
+        "breadcrumb_jsonld": to_json(breadcrumb_jsonld(request, crumbs)),
+    })
+    return render(request, "directory/listing.html", ctx)
+
+
+@require_GET
+def robots_txt(request):
+    lines = [
+        "User-agent: *",
+        "Disallow: /admin/",
+        "Disallow: /search/",
+        "Disallow: /login/",
+        "Disallow: /signup/",
+        "Disallow: /logout/",
+        "Disallow: /add-business/",
+        "Disallow: /my-businesses/",
+        "Disallow: /business/*/edit/",
+        "Disallow: /business/*/hours/",
+        "Disallow: /business/*/photos/",
+        "",
+        f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain")

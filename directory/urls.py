@@ -7,6 +7,9 @@ from .forms import LoginForm
 urlpatterns = [
     path("", views.home, name="home"),
     path("search/", views.search, name="search"),
+    path("photos/", views.photo_gallery, name="photos"),
+    path("category/<slug:slug>/", views.category_page, name="category_page"),
+    path("city/<slug:slug>/", views.city_page, name="city_page"),
     path("business/<slug:slug>/", views.business_detail, name="business_detail"),
     path("business/<slug:slug>/edit/", views.edit_business, name="edit_business"),
     path("business/<slug:slug>/hours/", views.manage_hours, name="manage_hours"),

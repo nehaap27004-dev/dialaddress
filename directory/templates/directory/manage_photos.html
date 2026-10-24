@@ -6,19 +6,28 @@
   <div class="section-head">
     <div>
       <h2>Photos</h2>
-      <p>{{ business.name }}</p>
+      <p>Linked to <a href="{% url 'business_detail' business.slug %}"><strong>{{ business.name }}</strong></a> · {{ business.category.name }} · {{ business.city }}</p>
     </div>
     <a class="btn btn-outline" href="{% url 'my_businesses' %}">Back</a>
   </div>
 
   <section class="panel">
-    <h2><i class="fa-regular fa-image"></i> Add photos</h2>
+    <h2><i class="fa-regular fa-image"></i> Add a photo</h2>
     <form method="post" enctype="multipart/form-data" class="upload-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="upload">
-      <input type="file" name="images" accept="image/*" multiple required>
-      <small>Select one or more images. Up to {{ max_photos }} photos in total, {{ max_mb }} MB each. You have {{ photos|length }} so far.</small>
-      <button class="btn btn-red" type="submit"><i class="fa-solid fa-upload"></i> Upload</button>
+
+      <label for="photoFile">Photo <span class="req">*</span></label>
+      <input id="photoFile" type="file" name="image" accept="image/*" required>
+
+      <label for="photoHeading">Heading <span class="req">*</span></label>
+      <input id="photoHeading" type="text" name="heading" maxlength="100" required placeholder="e.g. Family dining area">
+
+      <label for="photoDetails">Short details</label>
+      <textarea id="photoDetails" name="details" maxlength="300" rows="3" placeholder="e.g. Spacious seating for up to 60 guests, with a play area for kids."></textarea>
+
+      <small>The heading and details appear under the photo on your listing, and the heading is also used as the image's description for search engines. Up to {{ max_photos }} photos, {{ max_mb }} MB each. You have {{ photos|length }} so far.</small>
+      <button class="btn btn-red" type="submit"><i class="fa-solid fa-upload"></i> Upload photo</button>
     </form>
   </section>
 
@@ -28,7 +37,17 @@
       <div class="manage-grid">
         {% for p in photos %}
           <figure>
-            <img src="{{ p.image.url }}" alt="Photo {{ forloop.counter }}" loading="lazy">
+            <img src="{{ p.image.url }}" alt="{{ p.display_caption }}" loading="lazy">
+
+            <form method="post" class="edit-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update">
+              <input type="hidden" name="photo_id" value="{{ p.id }}">
+              <input type="text" name="heading" value="{{ p.heading }}" maxlength="100" required placeholder="Heading (required)">
+              <textarea name="details" rows="3" maxlength="300" placeholder="Short details">{{ p.caption }}</textarea>
+              <button type="submit" class="save">Save</button>
+            </form>
+
             <form method="post" onsubmit="return confirm('Delete this photo?')">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete">
@@ -38,9 +57,9 @@
           </figure>
         {% endfor %}
       </div>
-      <p class="muted">The first four photos appear on your cover. Any extra photos show as "+N Photos" and in the Photos tab.</p>
+      <p class="muted">The first four photos appear on your cover. All photos appear in the gallery on your listing.</p>
     {% else %}
-      <p class="muted">No photos yet. Upload some above.</p>
+      <p class="muted">No photos yet. Upload one above.</p>
     {% endif %}
   </section>
 </div>
