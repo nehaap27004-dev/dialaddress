@@ -1,0 +1,54 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <form method="get">
+    <input class="dash-input" name="q" value="{{ q }}" placeholder="Search username, name, email">
+    <select class="dash-input" name="status">
+      <option value="">All statuses</option>
+      <option value="pending" {% if status == "pending" %}selected{% endif %}>Awaiting approval</option>
+      <option value="approved" {% if status == "approved" %}selected{% endif %}>Approved</option>
+      <option value="blocked" {% if status == "blocked" %}selected{% endif %}>Blocked</option>
+    </select>
+    <button class="btn-d">Filter</button>
+  </form>
+</div>
+<div class="dash-card"><div class="table-wrap"><table class="dash-table">
+  <thead><tr><th>User</th><th>Email</th><th>Status</th><th>Listings</th><th>Joined</th><th></th></tr></thead>
+  <tbody>
+  {% for u in page_obj %}
+    <tr>
+      <td><strong>{{ u.username }}</strong>
+        {% if u.is_superuser %}<span class="badge b-info">Superuser</span>{% elif u.is_staff %}<span class="badge b-info">Staff</span>{% endif %}</td>
+      <td>{{ u.email|default:"—" }}</td>
+      <td>
+        {% if u.profile.status == "pending" %}<span class="badge b-wait">Awaiting approval</span>
+        {% elif u.profile.status == "blocked" %}<span class="badge b-bad">Blocked</span>
+        {% else %}<span class="badge b-ok">Approved</span>{% endif %}
+      </td>
+      <td>{{ u.biz_count }}</td>
+      <td>{{ u.date_joined|date:"d M Y" }}</td>
+      <td class="row-actions">
+        {% if perms.auth.change_user %}
+          <a class="btn-d sm ghost" href="{% url 'dashboard:user_edit' u.pk %}">Edit</a>
+          {% if not u.is_superuser and u.pk != user.pk %}
+            <form method="post" action="{% url 'dashboard:user_action' u.pk %}">
+              {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+              {% if u.profile.status == "pending" %}
+                <button name="action" value="approve" class="btn-d sm">Approve</button>
+              {% elif u.profile.status == "blocked" %}
+                <button name="action" value="unblock" class="btn-d sm">Unblock</button>
+              {% else %}
+                <button name="action" value="block" class="btn-d sm red" onclick="return confirm('Block {{ u.username|escapejs }}? Their listings will be hidden.')">Block</button>
+              {% endif %}
+            </form>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No users match.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

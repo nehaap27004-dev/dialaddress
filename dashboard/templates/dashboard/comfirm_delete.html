@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<form method="post" class="dash-card">
+  {% csrf_token %}
+  <h3>Delete “{{ object }}”?</h3>
+  <p class="muted">This cannot be undone.</p>
+  <div class="row-actions">
+    <button class="btn-d red">Yes, delete</button>
+    <a class="btn-d ghost" href="javascript:history.back()">Cancel</a>
+  </div>
+</form>
+{% endblock %}

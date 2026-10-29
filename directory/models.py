@@ -1,7 +1,7 @@
 from decimal import Decimal
 from urllib.parse import quote
 from django.core.exceptions import ValidationError
-
+from django.urls import reverse
 from django.db import models
 from django.db.models import Avg, Count
 from django.db.models.signals import post_delete, post_save
@@ -13,7 +13,12 @@ import os
 import uuid
 import re
 from django.core.validators import RegexValidator
-
+# Top-level words the site uses itself. A country can't use one of these as its slug.
+RESERVED_SLUGS = {
+    "admin", "dashboard", "business", "search", "login", "logout", "signup",
+    "add-business", "my-businesses", "photos", "category", "city",
+    "static", "media", "sitemap", "robots", "api",
+}
 DEFAULT_LOGO_BG = "#FFFFFF"
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -22,7 +27,23 @@ def normalize_color(value):
     """A valid #RRGGBB in upper case, or pure white for anything else."""
     value = (value or "").strip()
     return value.upper() if _HEX.match(value) else DEFAULT_LOGO_BG
+class CategoryGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=120, unique=True, blank=True)
+    order = models.PositiveIntegerField(default=0, help_text="Lower numbers show first.")
+    is_active = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ["order", "name"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+    
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=120, unique=True, blank=True)
@@ -34,6 +55,15 @@ class Category(models.Model):
         "self", on_delete=models.CASCADE, null=True, blank=True,
         related_name="children",
         help_text="Leave empty for a main category. Set it to make a subcategory (e.g. Fast Food under Restaurants).",
+    )
+    order = models.PositiveIntegerField(
+        "Order", default=0,
+        help_text="Lower numbers show first (1, 2, 3...). Categories with the same number are sorted by name.",
+    )
+    group = models.ForeignKey(
+        "CategoryGroup", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="categories",
+        help_text="Optional. Groups main categories, e.g. Food & Dining.",
     )
     info_heading = models.CharField(
         "Panel heading", max_length=150, blank=True, default="",
@@ -49,7 +79,7 @@ class Category(models.Model):
     )
     class Meta:
         verbose_name_plural = "categories"
-        ordering = ["name"]
+        ordering = ["order", "name"]
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -92,6 +122,14 @@ class Country(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        s = self.slug or slugify(self.name)
+        if s in RESERVED_SLUGS:
+            raise ValidationError({"name": f'"{s}" is used by the site itself. Choose a different name.'})
+
+    def get_absolute_url(self):
+        return reverse("geo_country", args=[self.slug])
     def __str__(self):
         return self.name
 
@@ -111,9 +149,21 @@ class City(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            parts = [self.name, self.state, self.country.code if self.country else ""]
-            self.slug = slugify("-".join(p for p in parts if p))
+            code = self.country.code if self.country else ""
+            candidates = [self.name, f"{self.name} {self.state}", f"{self.name} {self.state} {code}"]
+            for c in candidates:
+                s = slugify(c)
+                if s and not City.objects.filter(slug=s).exclude(pk=self.pk).exists():
+                    self.slug = s          # shortest free slug: muscat, then muscat-xyz, then muscat-xyz-om
+                    break
+            else:
+                self.slug = slugify(f"{self.name}-{self.state}-{code}-{uuid.uuid4().hex[:4]}")
         super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        if self.country_id:
+            return reverse("geo_city", args=[self.country.slug, self.slug])
+        return reverse("city_page", args=[self.slug])
 
     def __str__(self):
         parts = [self.name, self.state, self.country.name if self.country else ""]
@@ -199,6 +249,7 @@ class Business(models.Model):
     class Meta:
         verbose_name_plural = "businesses"
         ordering = ["-is_featured", "-rating", "name"]
+        indexes = [models.Index(fields=["is_active", "-created_at"])]
 
     def save(self, *args, **kwargs):
         if not self.slug:

@@ -1,0 +1,76 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <form method="get">
+    <input class="dash-input" name="q" value="{{ q }}" placeholder="Search name, phone, city, owner">
+    <select class="dash-input" name="status">
+      <option value="">All statuses</option>
+      <option value="active" {% if status == "active" %}selected{% endif %}>Live</option>
+      <option value="pending" {% if status == "pending" %}selected{% endif %}>Hidden / awaiting approval</option>
+      <option value="featured" {% if status == "featured" %}selected{% endif %}>Featured</option>
+    </select>
+    <select class="dash-input" name="category">
+      <option value="">All categories</option>
+      {% for c in categories %}<option value="{{ c.pk }}" {% if category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn-d">Filter</button>
+  </form>
+  {% if perms.directory.add_business %}<a class="btn-d red" href="{% url 'dashboard:business_add' %}"><i class="fa-solid fa-plus"></i> Add business</a>{% endif %}
+</div>
+
+<form method="post" action="{% url 'dashboard:business_action' %}" class="dash-card">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <div class="toolbar">
+    <span class="muted">{{ page_obj.paginator.count }} found</span>
+    {% if perms.directory.change_business %}
+    <div class="row-actions">
+      <select name="action" class="dash-input">
+        <option value="approve">Approve (make live)</option>
+        <option value="hide">Hide</option>
+        <option value="feature">Mark featured</option>
+        <option value="unfeature">Remove featured</option>
+        <option value="verify">Mark verified</option>
+        <option value="unverify">Remove verified</option>
+      </select>
+      <button class="btn-d">Apply to ticked</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="table-wrap"><table class="dash-table">
+    <thead><tr><th><input type="checkbox" id="checkAll"></th><th>Business</th><th>Category</th><th>City</th><th>Owner</th><th>Status</th><th>Added</th><th></th></tr></thead>
+    <tbody>
+    {% for b in page_obj %}
+      <tr>
+        <td><input type="checkbox" name="ids" value="{{ b.pk }}"></td>
+        <td><strong>{{ b.name }}</strong>
+          {% if b.is_verified %}<span class="badge b-info">Verified</span>{% endif %}
+          {% if b.is_featured %}<span class="badge b-info">Featured</span>{% endif %}</td>
+        <td>{{ b.category.name }}{% if b.subcategory %} / {{ b.subcategory.name }}{% endif %}</td>
+        <td>{{ b.city.name }}</td>
+        <td>{{ b.owner|default:"—" }}</td>
+        <td>{% if b.is_active %}<span class="badge b-ok">Live</span>{% else %}<span class="badge b-wait">Hidden</span>{% endif %}</td>
+        <td>{{ b.created_at|date:"d M Y" }}</td>
+        <td class="row-actions">
+          {% if perms.directory.change_business %}<a class="btn-d sm ghost" href="{% url 'dashboard:business_edit' b.pk %}">Edit</a>{% endif %}
+          <a class="btn-d sm ghost" href="{% url 'business_detail' b.slug %}" target="_blank">View</a>
+          {% if perms.directory.delete_business %}<a class="btn-d sm red" href="{% url 'dashboard:business_delete' b.pk %}">Delete</a>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="muted">No businesses match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</form>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("checkAll").addEventListener("change", function () {
+    document.querySelectorAll('input[name="ids"]').forEach(function (c) { c.checked = this.checked; }, this);
+  });
+</script>
+{% endblock %}

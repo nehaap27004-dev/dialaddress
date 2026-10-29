@@ -3,7 +3,7 @@ from django.urls import path
 
 from . import views
 from .forms import LoginForm
-
+from . import geo_views
 urlpatterns = [
     path("", views.home, name="home"),
     path("search/", views.search, name="search"),
@@ -25,4 +25,9 @@ urlpatterns = [
 
     path("add-business/", views.add_business, name="add_business"),
     path("my-businesses/", views.my_businesses, name="my_businesses"),
+        # Location-first SEO URLs. Keep these LAST: they match any "word/word/" path.
+    path("<slug:country_slug>/", geo_views.country_page, name="geo_country"),
+    path("<slug:country_slug>/<slug:segment>/", geo_views.segment_page, name="geo_city"),
+    path("<slug:country_slug>/<slug:segment>/", geo_views.segment_page, name="geo_category"),
+    path("<slug:country_slug>/<slug:city_slug>/<slug:category_slug>/", geo_views.city_category_page, name="geo_city_category"),
 ]

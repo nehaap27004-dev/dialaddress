@@ -1,0 +1,93 @@
+{% extends "directory/base.html" %}
+{% load static %}
+
+{% block title %}{{ heading }} - DialAddress{% endblock %}
+
+{% block extra_head %}
+  <link rel="canonical" href="{{ canonical }}">
+  <meta name="description" content="{{ intro|truncatechars:160 }}">
+  {% if noindex %}<meta name="robots" content="noindex, follow">{% endif %}
+  <script type="application/ld+json">{{ breadcrumb_jsonld|safe }}</script>
+{% endblock %}
+
+{% block content %}
+<section class="hero hero-small">
+  <div class="container">
+    {% include "directory/_search_form.html" %}
+  </div>
+</section>
+
+<div class="container explore">
+  <nav class="crumbs">
+    {% for label, url in crumbs %}
+      {% if forloop.last %}<span>{{ label }}</span>{% else %}<a href="{{ url }}">{{ label }}</a><span class="sep">›</span>{% endif %}
+    {% endfor %}
+  </nav>
+
+  <div class="section-head">
+    <div>
+      <h1 class="page-title">{{ heading }}</h1>
+      <p>{{ intro }}</p>
+      <p class="muted">{{ total }} business{{ total|pluralize:"es" }} found</p>
+    </div>
+  </div>
+
+  {% if page_obj.object_list %}
+    <div class="grid">
+      {% for b in page_obj %}{% include "directory/_card.html" %}{% endfor %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pagination" aria-label="Pages">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}"><i class="fa-solid fa-chevron-left"></i> Prev</a>
+      {% endif %}
+      {% for p in page_range %}
+        {% if p == ellipsis %}<span class="dots">…</span>
+        {% elif p == page_obj.number %}<span class="current">{{ p }}</span>
+        {% else %}<a href="?page={{ p }}">{{ p }}</a>{% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Next <i class="fa-solid fa-chevron-right"></i></a>
+      {% endif %}
+    </nav>
+    {% endif %}
+  {% else %}
+    <p class="empty">No businesses are listed here yet. Try another city or category below.</p>
+  {% endif %}
+
+  {% if category and category.has_info %}
+    <div class="more-wrap">
+      <button type="button" class="btn btn-outline more-btn" data-cpanel-open
+              aria-haspopup="dialog" aria-controls="catPanel" aria-label="More about {{ category.name }}">
+        <i class="fa-solid fa-circle-info"></i> More
+      </button>
+    </div>
+  {% endif %}
+
+  {% for title, links in link_sections %}
+    {% if links %}
+      <h2>{{ title }}</h2>
+      <ul class="link-cloud">
+        {% for label, url in links %}<li><a href="{{ url }}">{{ label }}</a></li>{% endfor %}
+      </ul>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if category and category.has_info %}
+  <div class="cpanel-backdrop" id="catPanelBackdrop" data-cpanel-close></div>
+  <aside class="cpanel" id="catPanel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="catPanelTitle">
+    <div class="cpanel-head">
+      <span class="tag">{{ category.name }}</span>
+      <button type="button" class="cpanel-close" data-cpanel-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="cpanel-body">
+      <h2 id="catPanelTitle">{{ category.info_title }}</h2>
+      {% if category.info_subheading %}<p class="cpanel-sub">{{ category.info_subheading }}</p>{% endif %}
+      <div class="cpanel-text">{{ category.info_content|linebreaks }}</div>
+    </div>
+  </aside>
+  <script src="{% static 'directory/js/category_panel.js' %}" defer></script>
+{% endif %}
+{% endblock %}

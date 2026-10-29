@@ -1,0 +1,7 @@
+{% extends "dashboard/form.html" %}
+{% load static %}
+{% block scripts %}
+<script>window.SUBCATEGORY_URL = "{% url 'dashboard:subcategories' %}";</script>
+<script src="{% static 'dashboard/js/business_form.js' %}"></script>
+<script src="{% static 'directory/js/logo_color.js' %}"></script>
+{% endblock %}

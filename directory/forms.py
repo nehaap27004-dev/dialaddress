@@ -4,7 +4,6 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from .models import Business, Category, Feature, Review
-
 User = get_user_model()
 
 
@@ -123,3 +122,5 @@ class BusinessForm(forms.ModelForm):
         if cat and sub and sub.parent_id != cat.id:
             self.add_error("subcategory", "This subcategory doesn't belong to the chosen category.")
         return data
+
+    

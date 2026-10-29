@@ -18,6 +18,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
     path("robots.txt", robots_txt),
+    path("dashboard/", include("dashboard.urls")),
     path("", include("directory.urls")),
 ]
 

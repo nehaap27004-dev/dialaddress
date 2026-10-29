@@ -1,0 +1,39 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="stats">
+  <a class="dash-card stat {% if biz.pending %}warn{% endif %}" href="{% url 'dashboard:business_list' %}?status=pending"><strong>{{ biz.pending }}</strong>Businesses awaiting approval</a>
+  <a class="dash-card stat" href="{% url 'dashboard:business_list' %}"><strong>{{ biz.total }}</strong>Total businesses</a>
+  <a class="dash-card stat" href="{% url 'dashboard:business_list' %}?status=featured"><strong>{{ biz.featured }}</strong>Featured</a>
+  <a class="dash-card stat {% if usr.pending %}warn{% endif %}" href="{% url 'dashboard:user_list' %}?status=pending"><strong>{{ usr.pending }}</strong>Users awaiting approval</a>
+  <a class="dash-card stat" href="{% url 'dashboard:user_list' %}"><strong>{{ usr.total }}</strong>Total users</a>
+  <a class="dash-card stat" href="{% url 'dashboard:category_list' %}"><strong>{{ category_count }}</strong>Categories</a>
+</div>
+
+<div class="dash-card">
+  <h3>Waiting for approval</h3>
+  {% if recent_pending %}
+  <div class="table-wrap"><table class="dash-table">
+    <thead><tr><th>Business</th><th>Category</th><th>City</th><th>Owner</th><th></th></tr></thead>
+    <tbody>
+    {% for b in recent_pending %}
+      <tr>
+        <td><a href="{% url 'dashboard:business_edit' b.pk %}"><strong>{{ b.name }}</strong></a></td>
+        <td>{{ b.category.name }}</td><td>{{ b.city.name }}</td><td>{{ b.owner|default:"—" }}</td>
+        <td class="row-actions">
+          {% if perms.directory.change_business %}
+          <form method="post" action="{% url 'dashboard:business_action' %}">
+            {% csrf_token %}<input type="hidden" name="action" value="approve">
+            <input type="hidden" name="ids" value="{{ b.pk }}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn-d sm">Approve</button>
+          </form>
+          {% endif %}
+          <a class="btn-d sm ghost" href="{% url 'dashboard:business_edit' b.pk %}">Review</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Nothing is waiting. 🎉</p>{% endif %}
+</div>
+{% endblock %}

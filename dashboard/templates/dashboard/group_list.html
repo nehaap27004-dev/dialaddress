@@ -1,0 +1,25 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <span class="muted">Groups collect main categories, e.g. Food &amp; Dining.</span>
+  {% if perms.directory.add_categorygroup %}<a class="btn-d red" href="{% url 'dashboard:group_add' %}"><i class="fa-solid fa-plus"></i> Add group</a>{% endif %}
+</div>
+<div class="dash-card"><div class="table-wrap"><table class="dash-table">
+  <thead><tr><th>Order</th><th>Name</th><th>Categories</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for g in page_obj %}
+    <tr>
+      <td>{{ g.order }}</td><td><strong>{{ g.name }}</strong></td><td>{{ g.n }}</td>
+      <td>{% if g.is_active %}<span class="badge b-ok">Active</span>{% else %}<span class="badge b-wait">Off</span>{% endif %}</td>
+      <td class="row-actions">
+        {% if perms.directory.change_categorygroup %}<a class="btn-d sm ghost" href="{% url 'dashboard:group_edit' g.pk %}">Edit</a>{% endif %}
+        {% if perms.directory.delete_categorygroup %}<a class="btn-d sm red" href="{% url 'dashboard:group_delete' g.pk %}">Delete</a>{% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No groups yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

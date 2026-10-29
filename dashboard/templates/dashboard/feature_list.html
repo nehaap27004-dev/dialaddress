@@ -1,0 +1,25 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <span class="muted">Features appear as chips on a business page, e.g. Parking or Home delivery.</span>
+  {% if perms.directory.add_feature %}<a class="btn-d red" href="{% url 'dashboard:feature_add' %}"><i class="fa-solid fa-plus"></i> Add feature</a>{% endif %}
+</div>
+<div class="dash-card"><div class="table-wrap"><table class="dash-table">
+  <thead><tr><th>Icon</th><th>Name</th><th>Used by</th><th></th></tr></thead>
+  <tbody>
+  {% for f in page_obj %}
+    <tr>
+      <td><i class="fa-solid {{ f.icon|default:'fa-check' }}"></i> <small class="muted">{{ f.icon }}</small></td>
+      <td><strong>{{ f.name }}</strong></td><td>{{ f.n }} business{{ f.n|pluralize:"es" }}</td>
+      <td class="row-actions">
+        {% if perms.directory.change_feature %}<a class="btn-d sm ghost" href="{% url 'dashboard:feature_edit' f.pk %}">Edit</a>{% endif %}
+        {% if perms.directory.delete_feature %}<a class="btn-d sm red" href="{% url 'dashboard:feature_delete' f.pk %}">Delete</a>{% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4" class="muted">No features yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <form method="get">
+    <input class="dash-input" name="q" value="{{ q }}" placeholder="Search reviewer, comment, business">
+    <select class="dash-input" name="status">
+      <option value="">All reviews</option>
+      <option value="visible" {% if status == "visible" %}selected{% endif %}>Visible on site</option>
+      <option value="hidden" {% if status == "hidden" %}selected{% endif %}>Hidden</option>
+    </select>
+    <select class="dash-input" name="rating">
+      <option value="">Any rating</option>
+      {% for i in "54321" %}<option value="{{ i }}" {% if rating == i %}selected{% endif %}>{{ i }} star{{ i|pluralize }}</option>{% endfor %}
+    </select>
+    <button class="btn-d">Filter</button>
+  </form>
+</div>
+
+<form method="post" action="{% url 'dashboard:review_action' %}" class="dash-card">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <div class="toolbar">
+    <span class="muted">{{ page_obj.paginator.count }} found</span>
+    {% if perms.directory.change_review %}
+    <div class="row-actions">
+      <select name="action" class="dash-input">
+        <option value="approve">Show on site</option>
+        <option value="hide">Hide</option>
+        {% if perms.directory.delete_review %}<option value="delete">Delete</option>{% endif %}
+      </select>
+      <button class="btn-d">Apply to ticked</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="table-wrap"><table class="dash-table">
+    <thead><tr><th><input type="checkbox" id="checkAll"></th><th>Business</th><th>Reviewer</th><th>Rating</th><th>Comment</th><th>Status</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+    {% for r in page_obj %}
+      <tr>
+        <td><input type="checkbox" name="ids" value="{{ r.pk }}"></td>
+        <td><a href="{% url 'business_detail' r.business.slug %}" target="_blank"><strong>{{ r.business.name }}</strong></a></td>
+        <td>{{ r.name }}</td>
+        <td>{{ r.rating }} ★</td>
+        <td>{{ r.comment|truncatechars:80|default:"—" }}</td>
+        <td>{% if r.is_approved %}<span class="badge b-ok">Visible</span>{% else %}<span class="badge b-wait">Hidden</span>{% endif %}</td>
+        <td>{{ r.created_at|date:"d M Y" }}</td>
+        <td class="row-actions">
+          {% if perms.directory.change_review %}<a class="btn-d sm ghost" href="{% url 'dashboard:review_edit' r.pk %}">Edit</a>{% endif %}
+          {% if perms.directory.delete_review %}<a class="btn-d sm red" href="{% url 'dashboard:review_delete' r.pk %}">Delete</a>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8" class="muted">No reviews match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</form>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("checkAll").addEventListener("change", function () {
+    document.querySelectorAll('input[name="ids"]').forEach(function (c) { c.checked = this.checked; }, this);
+  });
+</script>
+{% endblock %}

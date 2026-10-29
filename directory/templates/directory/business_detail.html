@@ -1,5 +1,5 @@
 {% extends "directory/base.html" %}
-
+{% load geo_urls %}
 {% block title %}{{ b.name }} - {{ b.city.name }} | DialAddress{% endblock %}
 {% block messages %}{% endblock %}
 {% block content %}
@@ -18,9 +18,13 @@
 
   <nav class="crumbs">
     <a href="{% url 'home' %}">Home</a><span class="sep">›</span>
-    <a href="{% url 'search' %}?category={{ b.category.slug }}">{{ b.category.name }}</a><span class="sep">›</span>
+    {% if b.city.country %}
+      <a href="{% country_link b.city.country %}">{{ b.city.country.name }}</a><span class="sep">›</span>
+      <a href="{% city_link b.city %}">{{ b.city.name }}</a><span class="sep">›</span>
+    {% endif %}
+    <a href="{% city_category_link b.city b.category %}">{{ b.category.name }}</a><span class="sep">›</span>
     {% if b.subcategory %}
-      <a href="{% url 'search' %}?category={{ b.subcategory.slug }}">{{ b.subcategory.name }}</a><span class="sep">›</span>
+      <a href="{% city_category_link b.city b.subcategory %}">{{ b.subcategory.name }}</a><span class="sep">›</span>
     {% endif %}
     <span>{{ b.name }}</span>
   </nav>

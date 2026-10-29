@@ -15,11 +15,14 @@ from .models import (
 )
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "parent", "slug", "icon", "has_content")
+    list_display = ("order", "name", "parent", "slug", "icon", "has_content")
+    list_display_links = ("name",)
+    list_editable = ("order",)
+    ordering = ("order", "name")
     list_filter = ("parent",)
     search_fields = ("name",)
     fieldsets = (
-        (None, {"fields": ("name", "slug", "icon", "parent")}),
+        (None, {"fields": ("name", "slug", "icon", "parent","order")}),
         ("'More' panel on the search page", {
             "description": "Shown when visitors click More at the end of a category's results. The button appears only if the description is filled in.",
             "fields": ("info_heading", "info_subheading", "info_content"),
@@ -271,3 +274,7 @@ class BusinessPhotoAdmin(admin.ModelAdmin):
     @admin.display(description="City")
     def city(self, obj):
         return obj.business.city.name
+
+admin.site.site_header = "DialAddress Admin"
+admin.site.site_title = "DialAddress"
+admin.site.index_title = "Manage your directory"

@@ -1,6 +1,8 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+  {% block extra_head %}{% endblock %}
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -38,6 +40,7 @@
           <a href="{% url 'login' %}" class="login"><i class="fa-regular fa-user"></i> Login</a>
           <a href="{% url 'signup' %}" class="login">Sign up</a>
         {% endif %}
+        {% if user.is_staff %}<a href="{% url 'dashboard:home' %}" class="login"><i class="fa-solid fa-gauge"></i> Dashboard</a>{% endif %}
         <a href="{% url 'add_business' %}" class="btn btn-red"><i class="fa-solid fa-plus"></i> Add Business</a>
       </div>
 

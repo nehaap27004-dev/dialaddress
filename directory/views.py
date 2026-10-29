@@ -18,6 +18,9 @@ from .decorators import approved_required
 from .forms import BusinessForm, ReviewForm, SignUpForm
 from .models import Business, BusinessPhoto, Category, City, OpeningHour
 from .seo import breadcrumb_jsonld, business_jsonld, clean_text, to_json
+from django.utils.text import slugify
+
+from . import geo
 PER_PAGE = 9
 
 SORTS = {
@@ -31,12 +34,21 @@ SORTS = {
 
 def _cities():
     return City.objects.select_related("country").order_by("country__name", "name")
-
+def _clean_url_for(category, city_id):
+    """The location-first URL for a category, using the chosen city if there is one."""
+    city = None
+    if city_id.isdigit():
+        city = City.objects.select_related("country").filter(pk=city_id).first()
+    if city and city.country_id:
+        return geo.city_category_url(city, category)
+    country = geo.default_country(category)
+    return geo.category_url(category, country) if country else None
 
 def home(request):
     context = {
         "categories": Category.objects.filter(parent__isnull=True)[:8],
         "cities": _cities(),
+        "default_country": geo.default_country(),
         "featured": Business.objects.filter(is_active=True, is_featured=True)
         .select_related("category", "city")[:6],
         "recent_photos": BusinessPhoto.objects.filter(business__is_active=True)
@@ -44,6 +56,7 @@ def home(request):
         .order_by("-id")[:6],
     }
     return render(request, "directory/home.html", context)
+
 def search(request):
     q = request.GET.get("q", "").strip()
     city_id = request.GET.get("city", "")
@@ -53,6 +66,14 @@ def search(request):
     sort = request.GET.get("sort", "relevance")
     if sort not in SORTS:
         sort = "relevance"
+
+    # Searching exactly "Car Workshops" (no filters) goes to /oman/barka/car-workshops/
+    if q and sort == "relevance" and not (category_slug or min_rating or verified or request.GET.get("page")):
+        match = Category.objects.filter(Q(name__iexact=q) | Q(slug=slugify(q))).first()
+        if match:
+            target = _clean_url_for(match, city_id)
+            if target:
+                return redirect(target)  # temporary: it depends on what was typed
 
     results = Business.objects.filter(is_active=True).select_related("category", "city")
 
@@ -69,7 +90,6 @@ def search(request):
     if city_id.isdigit():
         results = results.filter(city_id=city_id)
 
-    # Same category filter as before, plus the category itself for the More panel
     category = None
     if category_slug:
         category = Category.objects.filter(slug=category_slug).first()
@@ -109,6 +129,9 @@ def search(request):
         "category_tree": Category.objects.filter(parent__isnull=True).prefetch_related("children"),
     }
     return render(request, "directory/search.html", context)
+
+
+
 def business_detail(request, slug):
     business = get_object_or_404(
         Business.objects.select_related("category", "subcategory", "city__country")
@@ -405,48 +428,21 @@ def _page_context(request, qs, per_page=12):
         "noindex": paginator.count == 0,  # empty pages stay out of Google
     }
 
-
 def category_page(request, slug):
-    category = get_object_or_404(Category.objects.select_related("parent"), slug=slug)
-    qs = (
-        Business.objects.filter(is_active=True)
-        .filter(Q(category=category) | Q(subcategory=category))
-        .select_related("category", "city")
-        .order_by(*SORTS["relevance"])
-    )
-    ctx = _page_context(request, qs)
-    crumbs = [("Home", reverse("home"))]
-    if category.parent:
-        crumbs.append((category.parent.name, reverse("category_page", args=[category.parent.slug])))
-    crumbs.append((category.name, reverse("category_page", args=[category.slug])))
-    ctx.update({
-        "category": category,
-        "heading": f"{category.name} in India",
-        "intro": f"Find {category.name} businesses near you. Compare ratings, see photos and opening hours, then call or message them directly.",
-        "crumbs": crumbs,
-        "breadcrumb_jsonld": to_json(breadcrumb_jsonld(request, crumbs)),
-    })
-    return render(request, "directory/listing.html", ctx)
+    """Old /category/<slug>/ address: 301 to the location-first URL."""
+    category = get_object_or_404(Category, slug=slug)
+    country = geo.default_country(category)
+    if country is None:
+        return redirect(f"{reverse('search')}?category={category.slug}")
+    return redirect(geo.category_url(category, country), permanent=True)
 
 
 def city_page(request, slug):
+    """Old /city/<slug>/ address: 301 to /<country>/<city>/."""
     city = get_object_or_404(City.objects.select_related("country"), slug=slug)
-    qs = (
-        Business.objects.filter(is_active=True, city=city)
-        .select_related("category", "city")
-        .order_by(*SORTS["relevance"])
-    )
-    ctx = _page_context(request, qs)
-    place = f"{city.name}, {city.state}" if city.state else city.name
-    crumbs = [("Home", reverse("home")), (city.name, reverse("city_page", args=[city.slug]))]
-    ctx.update({
-        "heading": f"Businesses in {city.name}",
-        "intro": f"Browse local businesses in {place}. Compare ratings, see photos and opening hours, then call or message them directly.",
-        "crumbs": crumbs,
-        "breadcrumb_jsonld": to_json(breadcrumb_jsonld(request, crumbs)),
-    })
-    return render(request, "directory/listing.html", ctx)
-
+    if not city.country_id:
+        return redirect(f"{reverse('search')}?city={city.pk}")
+    return redirect(geo.city_url(city), permanent=True)
 
 @require_GET
 def robots_txt(request):
@@ -462,6 +458,7 @@ def robots_txt(request):
         "Disallow: /business/*/edit/",
         "Disallow: /business/*/hours/",
         "Disallow: /business/*/photos/",
+        "Disallow: /dashboard/",
         "",
         f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}",
     ]

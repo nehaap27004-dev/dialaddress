@@ -1,0 +1,47 @@
+:root {
+  --primary: #1f2a44;
+  --secondary: #e8281e;
+  --accent: #e8281e;
+  --primary-fg: #fff;
+  --header-bg: #fff;
+  --header-color: #1b2430;
+  --header-branding-color: #1b2430;
+  --header-link-color: #1b2430;
+  --breadcrumbs-bg: #1f2a44;
+  --breadcrumbs-fg: #c9d3ea;
+  --breadcrumbs-link-fg: #fff;
+  --link-fg: #1f5fd1;
+  --link-hover-color: #e8281e;
+  --button-bg: #e8281e;
+  --button-hover-bg: #c71f16;
+  --default-button-bg: #1f5fd1;
+  --default-button-hover-bg: #1a4fb0;
+  --object-tools-bg: #1f2a44;
+  --object-tools-hover-bg: #e8281e;
+  --body-bg: #f5f7fb;
+  --border-color: #e6e9f0;
+}
+
+body, input, select, textarea, button { font-family: "Segoe UI", Arial, sans-serif; }
+
+#header { border-bottom: 1px solid #e6e9f0; box-shadow: 0 2px 10px rgba(16, 24, 40, .06); }
+.admin-brand { font-size: 22px; font-weight: 800; color: #1b2a6b !important; }
+.admin-brand span { color: #e8281e; }
+
+.module { border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(16, 24, 40, .08); border: 0; }
+.module caption, .module h2 { background: #1f2a44; font-weight: 600; }
+#content-main .module caption a { color: #fff; }
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: 8px; font-weight: 600;
+}
+.object-tools a { border-radius: 999px; }
+
+input[type=text], input[type=email], input[type=url], input[type=password],
+input[type=number], textarea, select {
+  border-radius: 8px; border: 1px solid #d0d5dd; padding: 8px 10px;
+}
+input:focus, textarea:focus, select:focus { border-color: #1f5fd1; outline: 2px solid #bfd3ff; }
+
+#changelist table, .results table { border-radius: 8px; overflow: hidden; }
+thead th { background: #f2f4f7; }

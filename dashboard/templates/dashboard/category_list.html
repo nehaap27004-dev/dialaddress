@@ -1,0 +1,44 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <form method="get">
+    <select class="dash-input" name="group">
+      <option value="">All groups</option>
+      {% for g in groups %}<option value="{{ g.pk }}" {% if group == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>{% endfor %}
+    </select>
+    <button class="btn-d">Filter</button>
+  </form>
+  {% if perms.directory.add_category %}<a class="btn-d red" href="{% url 'dashboard:category_add' %}"><i class="fa-solid fa-plus"></i> Add category</a>{% endif %}
+</div>
+<div class="dash-card"><div class="table-wrap"><table class="dash-table">
+  <thead><tr><th>Order</th><th>Name</th><th>Group</th><th>Businesses</th><th>More panel</th><th></th></tr></thead>
+  <tbody>
+  {% for c in page_obj %}
+    <tr>
+      <td>{{ c.order }}</td>
+      <td><i class="fa-solid {{ c.icon|default:'fa-tag' }}"></i> <strong>{{ c.name }}</strong></td>
+      <td>{{ c.group|default:"—" }}</td>
+      <td>{{ c.main_count }}</td>
+      <td>{% if c.has_info %}<span class="badge b-ok">Filled</span>{% else %}<span class="badge b-wait">Empty</span>{% endif %}</td>
+      <td class="row-actions">
+        {% if perms.directory.change_category %}<a class="btn-d sm ghost" href="{% url 'dashboard:category_edit' c.pk %}">Edit</a>{% endif %}
+        {% if perms.directory.delete_category %}<a class="btn-d sm red" href="{% url 'dashboard:category_delete' c.pk %}">Delete</a>{% endif %}
+      </td>
+    </tr>
+    {% for s in c.children.all %}
+    <tr class="sub">
+      <td>{{ s.order }}</td><td>↳ {{ s.name }}</td><td></td><td>{{ s.sub_count }}</td>
+      <td>{% if s.has_info %}<span class="badge b-ok">Filled</span>{% else %}<span class="badge b-wait">Empty</span>{% endif %}</td>
+      <td class="row-actions">
+        {% if perms.directory.change_category %}<a class="btn-d sm ghost" href="{% url 'dashboard:category_edit' s.pk %}">Edit</a>{% endif %}
+        {% if perms.directory.delete_category %}<a class="btn-d sm red" href="{% url 'dashboard:category_delete' s.pk %}">Delete</a>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  {% empty %}
+    <tr><td colspan="6" class="muted">No categories yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

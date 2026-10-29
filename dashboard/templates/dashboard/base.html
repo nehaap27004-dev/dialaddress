@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{ page_title|default:"Dashboard" }} · DialAddress</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
+</head>
+<body class="dash">
+  <aside class="dash-side">
+    <a class="dash-brand" href="{% url 'dashboard:home' %}">Dial<span>Address</span></a>
+    <nav>
+      <a href="{% url 'dashboard:home' %}" class="{% if section == 'home' %}on{% endif %}"><i class="fa-solid fa-gauge"></i> Overview</a>
+      {% if perms.directory.view_business %}<a href="{% url 'dashboard:business_list' %}" class="{% if section == 'businesses' %}on{% endif %}"><i class="fa-solid fa-store"></i> Businesses</a>{% endif %}
+      {% if perms.directory.view_category %}<a href="{% url 'dashboard:category_list' %}" class="{% if section == 'categories' %}on{% endif %}"><i class="fa-solid fa-list"></i> Categories</a>{% endif %}
+      {% if perms.directory.view_categorygroup %}<a href="{% url 'dashboard:group_list' %}" class="{% if section == 'groups' %}on{% endif %}"><i class="fa-solid fa-layer-group"></i> Category groups</a>{% endif %}
+      {% if perms.directory.view_review %}<a href="{% url 'dashboard:review_list' %}" class="{% if section == 'reviews' %}on{% endif %}"><i class="fa-regular fa-star"></i> Reviews</a>{% endif %}
+      {% if perms.directory.view_city %}<a href="{% url 'dashboard:city_list' %}" class="{% if section == 'cities' %}on{% endif %}"><i class="fa-solid fa-city"></i> Cities</a>{% endif %}
+      {% if perms.directory.view_country %}<a href="{% url 'dashboard:country_list' %}" class="{% if section == 'countries' %}on{% endif %}"><i class="fa-solid fa-earth-asia"></i> Countries</a>{% endif %}
+      {% if perms.directory.view_feature %}<a href="{% url 'dashboard:feature_list' %}" class="{% if section == 'features' %}on{% endif %}"><i class="fa-solid fa-check-double"></i> Features</a>{% endif %}
+      {% if perms.auth.view_user %}<a href="{% url 'dashboard:user_list' %}" class="{% if section == 'users' %}on{% endif %}"><i class="fa-solid fa-users"></i> Users</a>{% endif %}
+      <a href="{% url 'home' %}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> View site</a>
+      {% if user.is_superuser %}<a href="{% url 'admin:index' %}"><i class="fa-solid fa-screwdriver-wrench"></i> Django admin</a>{% endif %}
+    </nav>
+  </aside>
+
+  <div class="dash-main">
+    <header class="dash-top">
+      <h1>{{ page_title }}</h1>
+      <div class="who">
+        <span><i class="fa-regular fa-user"></i> {{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="linkbtn">Logout</button></form>
+      </div>
+    </header>
+    <main class="dash-body">
+      {% for m in messages %}<div class="flash {{ m.tags }}">{{ m }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

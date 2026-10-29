@@ -1,8 +1,8 @@
 from django.contrib.sitemaps import Sitemap
-from django.db.models import Q
 from django.urls import reverse
 
-from .models import Business, Category, City
+from . import geo
+from .models import Business, City, Country
 
 
 class StaticSitemap(Sitemap):
@@ -16,32 +16,77 @@ class StaticSitemap(Sitemap):
         return reverse(item)
 
 
-class CategorySitemap(Sitemap):
+def _rows():
+    """(country, city, category, subcategory) slugs of every live business that has a country."""
+    return (
+        Business.objects.filter(is_active=True, city__country__isnull=False)
+        .order_by()  # clear the model's default ordering so distinct() works
+        .values_list("city__country__slug", "city__slug", "category__slug", "subcategory__slug")
+        .distinct()
+    )
+
+
+class CountrySitemap(Sitemap):
+    """/oman/"""
+    changefreq = "weekly"
+    priority = 0.7
+
+    def items(self):
+        return Country.objects.filter(cities__businesses__is_active=True).distinct().order_by("id")
+
+    def location(self, obj):
+        return geo.country_url(obj)
+
+
+class CitySitemap(Sitemap):
+    """/oman/muscat/"""
     changefreq = "weekly"
     priority = 0.7
 
     def items(self):
         return (
-            Category.objects.filter(
-                Q(businesses__is_active=True) | Q(sub_businesses__is_active=True)
-            )
+            City.objects.filter(country__isnull=False, businesses__is_active=True)
+            .select_related("country")
             .distinct()
             .order_by("id")
         )
 
     def location(self, obj):
-        return reverse("category_page", args=[obj.slug])
+        return geo.city_url(obj)
 
 
-class CitySitemap(Sitemap):
+class CategorySitemap(Sitemap):
+    """/oman/car-workshops/ (subcategories such as /oman/ac-repair/ too)"""
     changefreq = "weekly"
     priority = 0.7
 
     def items(self):
-        return City.objects.filter(businesses__is_active=True).distinct().order_by("id")
+        found = set()
+        for country, _city, cat, sub in _rows():
+            found.add((country, cat))
+            if sub:
+                found.add((country, sub))
+        return sorted(found)
 
-    def location(self, obj):
-        return reverse("city_page", args=[obj.slug])
+    def location(self, item):
+        return reverse("geo_category", args=item)
+
+
+class CityCategorySitemap(Sitemap):
+    """/oman/barka/car-workshops/ (subcategories such as /oman/barka/ac-repair/ too)"""
+    changefreq = "weekly"
+    priority = 0.7
+
+    def items(self):
+        found = set()
+        for country, city, cat, sub in _rows():
+            found.add((country, city, cat))
+            if sub:
+                found.add((country, city, sub))
+        return sorted(found)
+
+    def location(self, item):
+        return reverse("geo_city_category", args=item)
 
 
 class BusinessSitemap(Sitemap):

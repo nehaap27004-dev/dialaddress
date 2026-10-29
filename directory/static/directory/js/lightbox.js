@@ -104,7 +104,7 @@
   var startX = null;
   var media = lb.querySelector(".lb-media");
   media.addEventListener("touchstart", function (e) { startX = e.touches[0].clientX; }, { passive: true });
-  media.addEventListener("touchend", function (e) {
+  media.addEventListener("touchend  ", function (e) {
     if (startX === null || items.length < 2) return;
     var dx = e.changedTouches[0].clientX - startX;
     startX = null;

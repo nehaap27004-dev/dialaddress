@@ -1,5 +1,5 @@
 {% extends "directory/base.html" %}
-
+{% load geo_urls %}
 {% block content %}
 <section class="hero">
   <div class="container">
@@ -12,7 +12,7 @@
 <div class="container">
   <div class="cats">
     {% for c in categories %}
-      <a class="cat t{{ forloop.counter }}" href="{% url 'search' %}?category={{ c.slug }}">
+      <a class="cat t{{ forloop.counter }}" href="{% category_link c default_country %}">
         <i class="fa-solid {{ c.icon|default:'fa-tag' }}"></i>
         <span>{{ c.name }}</span>
       </a>

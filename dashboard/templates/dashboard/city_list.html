@@ -1,0 +1,32 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="toolbar">
+  <form method="get">
+    <input class="dash-input" name="q" value="{{ q }}" placeholder="Search city or state">
+    <select class="dash-input" name="country">
+      <option value="">All countries</option>
+      {% for c in countries %}<option value="{{ c.pk }}" {% if country == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn-d">Filter</button>
+  </form>
+  {% if perms.directory.add_city %}<a class="btn-d red" href="{% url 'dashboard:city_add' %}"><i class="fa-solid fa-plus"></i> Add city</a>{% endif %}
+</div>
+<div class="dash-card"><div class="table-wrap"><table class="dash-table">
+  <thead><tr><th>City</th><th>State</th><th>Country</th><th>Businesses</th><th></th></tr></thead>
+  <tbody>
+  {% for c in page_obj %}
+    <tr>
+      <td><strong>{{ c.name }}</strong></td><td>{{ c.state|default:"—" }}</td>
+      <td>{{ c.country|default:"—" }}</td><td>{{ c.n }}</td>
+      <td class="row-actions">
+        {% if perms.directory.change_city %}<a class="btn-d sm ghost" href="{% url 'dashboard:city_edit' c.pk %}">Edit</a>{% endif %}
+        {% if perms.directory.delete_city %}<a class="btn-d sm red" href="{% url 'dashboard:city_delete' c.pk %}">Delete</a>{% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No cities match.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "dashboard/_pagination.html" %}
+{% endblock %}

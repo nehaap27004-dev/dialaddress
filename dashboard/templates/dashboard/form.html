@@ -1,0 +1,30 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+{% if extra_links %}
+  <div class="toolbar"><div class="row-actions">
+    {% for label, url in extra_links %}<a class="btn-d sm ghost" href="{{ url }}">{{ label }}</a>{% endfor %}
+  </div></div>
+{% endif %}
+<form method="post" enctype="multipart/form-data" class="dash-card">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="dash-grid">
+    {% for field in form %}
+      <div class="fld {% if field.widget_type == 'textarea' or field.widget_type == 'checkboxselectmultiple' %}wide{% endif %}">
+        {% if field.widget_type == 'checkbox' %}
+          <label class="check">{{ field }} {{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+        {% endif %}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="row-actions" style="margin-top:18px">
+    <button class="btn-d red">Save</button>
+    <a class="btn-d ghost" href="javascript:history.back()">Cancel</a>
+  </div>
+</form>
+{% endblock %}
